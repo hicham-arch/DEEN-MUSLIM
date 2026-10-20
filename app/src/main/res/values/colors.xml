@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="primary">#EEBD2B</color>
+    <color name="primary_dark">#C49A20</color>
+    <color name="background">#F8F7F6</color>
+    <color name="text_dark">#181611</color>
+    <color name="white">#FFFFFF</color>
+    <color name="card_text">#374151</color>
+    <color name="text_share">#FFF3E0</color>
+
+
+    <color name="fajar_bg">#FFF3E0</color>
+    <color name="dhuhr_bg">#FFFDE7</color>
+    <color name="asr_bg">#FFF8E1</color>
+    <color name="isha_bg">#F8FAFC</color>
+    <color name="purple">#800080</color>
+</resources>

@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<menu xmlns:android="http://schemas.android.com/apk/res/android">
+    <item
+        android:id="@+id/nav_home"
+        android:icon="@drawable/ic_home"
+        android:title="Home" />
+    <item
+        android:id="@+id/nav_quran"
+        android:icon="@drawable/ic_book"
+        android:title="Quran" />
+    <item
+        android:id="@+id/nav_qibla"
+        android:icon="@drawable/ic_explore"
+        android:title="Qibla" />
+    <item
+        android:id="@+id/nav_tasbih"
+        android:icon="@drawable/ic_fingerprint"
+        android:title="Tasbih" />
+</menu>
