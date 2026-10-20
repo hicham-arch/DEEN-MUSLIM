@@ -48,4 +48,7 @@ dependencies {
     implementation("androidx.annotation:annotation:1.9.1")
     implementation("androidx.appcompat:appcompat:1.7.1")
     implementation("androidx.gridlayout:gridlayout:1.0.0")
+    implementation("com.squareup.okhttp3:okhttp:4.12.0")
+    implementation("com.google.code.gson:gson:2.11.0")
+    implementation("androidx.preference:preference:1.2.1")   // for settings later
 }

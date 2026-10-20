@@ -11,78 +11,95 @@
         android:id="@+id/scrollContent"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        android:layout_above="@+id/bottomNav"
-        android:fillViewport="true"
+        android:layout_above="@id/bottomNav"
+        android:fillViewport="false"
+        android:clipToPadding="false"
         android:overScrollMode="never">
 
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="vertical"
-            android:padding="16dp"
-            android:paddingBottom="24dp">
+            android:paddingStart="16dp"
+            android:paddingTop="8dp"
+            android:paddingEnd="16dp"
+            android:paddingBottom="16dp">
 
-            <!-- Top Bar -->
+            <!-- Compact Material 3-inspired top bar. The left button opens appearance settings. -->
             <LinearLayout
                 android:layout_width="match_parent"
-                android:layout_height="56dp"
+                android:layout_height="44dp"
                 android:gravity="center_vertical"
-                android:orientation="horizontal"
-                android:paddingBottom="8dp">
+                android:orientation="horizontal">
 
-                <com.google.android.material.card.MaterialCardView
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/appearanceButton"
+                    style="Widget.Material3.Button.IconButton"
                     android:layout_width="40dp"
                     android:layout_height="40dp"
-                    app:cardCornerRadius="20dp"
-                    app:cardElevation="2dp"
-                    app:cardBackgroundColor="@color/white">
+                    android:contentDescription="Appearance settings"
+                    app:icon="@drawable/ic_menu_24"
+                    app:iconTint="@color/text_dark"
+                    app:iconSize="22dp"
+                    app:backgroundTint="@color/white"
+                    app:cornerRadius="20dp"
+                    android:insetTop="0dp"
+                    android:insetBottom="0dp"
+                    android:insetLeft="0dp"
+                    android:insetRight="0dp" />
 
-                    <ImageButton
-                        android:layout_width="match_parent"
-                        android:layout_height="match_parent"
-                        android:background="@android:color/transparent"
-                        android:contentDescription="Menu"
-                        android:src="@drawable/ic_menu_24"
-                        android:tint="@color/text_dark"
-                        android:scaleType="centerInside" />
-                </com.google.android.material.card.MaterialCardView>
-
-                <TextView
+                <LinearLayout
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
                     android:layout_weight="1"
                     android:gravity="center"
-                    android:text="DEEN MUSLIM"
-                    android:textColor="@color/text_dark"
-                    android:textSize="20sp"
-                    android:textStyle="bold" />
+                    android:orientation="vertical">
 
-                <com.google.android.material.card.MaterialCardView
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:letterSpacing="0.01"
+                        android:text="DEEN MUSLIM"
+                        android:textColor="@color/text_dark"
+                        android:textSize="19sp"
+                        android:textStyle="bold" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="-1dp"
+                        android:letterSpacing="0.18"
+                        android:text="FAITH  •  PRAYER  •  BETTER YOU"
+                        android:textColor="@color/muted_text"
+                        android:textSize="7sp"
+                        android:textStyle="bold" />
+                </LinearLayout>
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/searchButton"
+                    style="Widget.Material3.Button.IconButton"
                     android:layout_width="40dp"
                     android:layout_height="40dp"
-                    app:cardCornerRadius="20dp"
-                    app:cardElevation="2dp"
-                    app:cardBackgroundColor="@color/white">
-
-                    <ImageButton
-                        android:layout_width="match_parent"
-                        android:layout_height="match_parent"
-                        android:background="@android:color/transparent"
-                        android:contentDescription="Search"
-                        android:src="@drawable/ic_search_24"
-                        android:tint="@color/text_dark"
-                        android:scaleType="centerInside" />
-                </com.google.android.material.card.MaterialCardView>
+                    android:contentDescription="Search"
+                    app:icon="@drawable/ic_search_24"
+                    app:iconTint="@color/text_dark"
+                    app:iconSize="22dp"
+                    app:backgroundTint="@color/white"
+                    app:cornerRadius="20dp"
+                    android:insetTop="0dp"
+                    android:insetBottom="0dp"
+                    android:insetLeft="0dp"
+                    android:insetRight="0dp" />
             </LinearLayout>
 
-            <!-- Hero Card -->
+            <!-- Compact prayer hero. Existing decorative assets are retained. -->
             <com.google.android.material.card.MaterialCardView
                 android:layout_width="match_parent"
-                android:layout_height="320dp"
-                android:layout_marginTop="8dp"
-                app:cardCornerRadius="24dp"
-                app:cardElevation="6dp"
+                android:layout_height="206dp"
+                android:layout_marginTop="10dp"
                 app:cardBackgroundColor="@color/primary"
+                app:cardCornerRadius="22dp"
+                app:cardElevation="2dp"
                 app:strokeWidth="0dp">
 
                 <FrameLayout
@@ -92,602 +109,146 @@
                     <View
                         android:layout_width="match_parent"
                         android:layout_height="match_parent"
-                        android:alpha="0.18"
+                        android:alpha="0.11"
                         android:background="@drawable/bg_hero_pattern" />
 
                     <View
                         android:layout_width="match_parent"
-                        android:layout_height="96dp"
+                        android:layout_height="62dp"
                         android:layout_gravity="bottom"
-                        android:alpha="0.38"
+                        android:alpha="0.25"
                         android:background="@drawable/bg_mosque_silhouette" />
 
                     <LinearLayout
                         android:layout_width="match_parent"
                         android:layout_height="match_parent"
-                        android:gravity="center"
+                        android:gravity="center_vertical"
                         android:orientation="vertical"
-                        android:padding="24dp">
+                        android:paddingStart="16dp"
+                        android:paddingTop="12dp"
+                        android:paddingEnd="16dp"
+                        android:paddingBottom="12dp">
 
                         <LinearLayout
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:gravity="center_vertical"
-                            android:orientation="horizontal">
-
-                            <LinearLayout
-                                android:layout_width="wrap_content"
-                                android:layout_height="wrap_content"
-                                android:gravity="center_vertical"
-                                android:orientation="horizontal">
-
-                                <ImageView
-                                    android:layout_width="16dp"
-                                    android:layout_height="16dp"
-                                    android:src="@drawable/ic_calendar_today_24"
-                                    android:tint="@android:color/white" />
-
-                                <TextView
-                                    android:layout_width="wrap_content"
-                                    android:layout_height="wrap_content"
-                                    android:layout_marginStart="4dp"
-                                    android:id="@+id/prayerDate"
-                                    android:text="2 June, 2025"
-                                    android:textColor="#E6FFFFFF"
-                                    android:textSize="13sp"
-                                    android:textStyle="bold" />
-                            </LinearLayout>
-
-                            <View
-                                android:layout_width="5dp"
-                                android:layout_height="5dp"
-                                android:layout_marginStart="10dp"
-                                android:layout_marginEnd="10dp"
-                                android:background="@drawable/bg_dot_white" />
-
-                            <LinearLayout
-                                android:layout_width="wrap_content"
-                                android:layout_height="wrap_content"
-                                android:gravity="center_vertical"
-                                android:orientation="horizontal">
-
-                                <ImageView
-                                    android:layout_width="16dp"
-                                    android:layout_height="16dp"
-                                    android:src="@drawable/ic_location_on_24"
-                                    android:tint="@android:color/white" />
-
-                                <TextView
-                                    android:layout_width="wrap_content"
-                                    android:layout_height="wrap_content"
-                                    android:layout_marginStart="4dp"
-                                    android:text="Sylhet, Bangladesh"
-                                    android:textColor="#E6FFFFFF"
-                                    android:textSize="13sp"
-                                    android:textStyle="bold" />
-                            </LinearLayout>
-                        </LinearLayout>
-
-                        <TextView
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:layout_marginTop="28dp"
-                            android:text="18:36"
-                            android:textColor="@android:color/white"
-                            android:textSize="64sp"
-                            android:textStyle="bold"
-                            android:letterSpacing="-0.04" />
-
-                        <TextView
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:text="Magrib"
-                            android:textColor="@android:color/white"
-                            android:textSize="20sp"
-                            android:fontFamily="sans-serif-medium" />
-
-                        <com.google.android.material.card.MaterialCardView
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:layout_marginTop="20dp"
-                            app:cardCornerRadius="18dp"
-                            app:cardBackgroundColor="#1A000000"
-                            app:strokeColor="#33FFFFFF"
-                            app:strokeWidth="1dp">
-
-                            <LinearLayout
-                                android:layout_width="wrap_content"
-                                android:layout_height="wrap_content"
-                                android:gravity="center_vertical"
-                                android:orientation="horizontal"
-                                android:paddingHorizontal="16dp"
-                                android:paddingVertical="10dp">
-
-                                <ImageView
-                                    android:layout_width="18dp"
-                                    android:layout_height="18dp"
-                                    android:src="@drawable/ic_timelapse_24"
-                                    android:tint="@android:color/white" />
-
-                                <TextView
-                                    android:layout_width="wrap_content"
-                                    android:layout_height="wrap_content"
-                                    android:layout_marginStart="6dp"
-                                    android:text="Remaining Time: 0:53:30"
-                                    android:textColor="@android:color/white"
-                                    android:textSize="13sp"
-                                    android:textStyle="bold" />
-                            </LinearLayout>
-                        </com.google.android.material.card.MaterialCardView>
-                    </LinearLayout>
-                </FrameLayout>
-            </com.google.android.material.card.MaterialCardView>
-            
-            <!-- Quick Actions -->
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="18dp"
-                android:layout_marginBottom="4dp"
-                android:text="Quick Actions"
-                android:textColor="@color/text_dark"
-                android:textSize="18sp"
-                android:textStyle="bold" />
-
-            <androidx.recyclerview.widget.RecyclerView
-                android:id="@+id/featuresRecycler"
-                android:layout_width="match_parent"
-                android:layout_height="244dp"
-                android:layout_marginTop="4dp"
-                android:nestedScrollingEnabled="false"
-                android:overScrollMode="never"/>
-                
-            <!-- Prayer Times -->
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="18dp"
-                android:layout_marginBottom="10dp"
-                android:text="Prayer Times"
-                android:textColor="@color/text_dark"
-                android:textSize="18sp"
-                android:textStyle="bold" />
-
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:orientation="vertical">
-
-                <com.google.android.material.card.MaterialCardView
-                    android:layout_width="match_parent"
-                    android:layout_height="64dp"
-                    android:layout_marginBottom="10dp"
-                    app:cardCornerRadius="18dp"
-                    app:cardBackgroundColor="@color/fajar_bg"
-                    app:strokeWidth="0dp">
-
-                    <LinearLayout
-                        android:layout_width="match_parent"
-                        android:layout_height="match_parent"
-                        android:gravity="center_vertical"
-                        android:orientation="horizontal"
-                        android:paddingHorizontal="16dp">
-
-                        <LinearLayout
-                            android:layout_width="0dp"
-                            android:layout_height="wrap_content"
-                            android:layout_weight="1"
-                            android:gravity="center_vertical"
-                            android:orientation="horizontal">
-
-                            <FrameLayout
-                                android:layout_width="40dp"
-                                android:layout_height="40dp"
-                                android:background="@drawable/bg_white_circle">
-
-                                <ImageView
-                                    android:layout_width="22dp"
-                                    android:layout_height="22dp"
-                                    android:layout_gravity="center"
-                                    android:src="@drawable/ic_wb_twilight_24"
-                                    android:tint="#FB8C00" />
-                            </FrameLayout>
-
-                            <TextView
-                                android:layout_width="wrap_content"
-                                android:layout_height="wrap_content"
-                                android:layout_marginStart="14dp"
-                                android:text="Fajar"
-                                android:textColor="@color/text_dark"
-                                android:textSize="16sp"
-                                android:textStyle="bold" />
-                        </LinearLayout>
-
-                        <TextView
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:text="05:36"
-                            android:textColor="@color/text_dark"
-                            android:textSize="16sp"
-                            android:textStyle="bold" />
-                    </LinearLayout>
-                </com.google.android.material.card.MaterialCardView>
-
-                <com.google.android.material.card.MaterialCardView
-                    android:layout_width="match_parent"
-                    android:layout_height="64dp"
-                    android:layout_marginBottom="10dp"
-                    app:cardCornerRadius="18dp"
-                    app:cardBackgroundColor="@color/dhuhr_bg"
-                    app:strokeWidth="0dp">
-
-                    <LinearLayout
-                        android:layout_width="match_parent"
-                        android:layout_height="match_parent"
-                        android:gravity="center_vertical"
-                        android:orientation="horizontal"
-                        android:paddingHorizontal="16dp">
-
-                        <LinearLayout
-                            android:layout_width="0dp"
-                            android:layout_height="wrap_content"
-                            android:layout_weight="1"
-                            android:gravity="center_vertical"
-                            android:orientation="horizontal">
-
-                            <FrameLayout
-                                android:layout_width="40dp"
-                                android:layout_height="40dp"
-                                android:background="@drawable/bg_white_circle">
-
-                                <ImageView
-                                    android:layout_width="22dp"
-                                    android:layout_height="22dp"
-                                    android:layout_gravity="center"
-                                    android:src="@drawable/ic_sunny_24"
-                                    android:tint="#FBC02D" />
-                            </FrameLayout>
-
-                            <TextView
-                                android:layout_width="wrap_content"
-                                android:layout_height="wrap_content"
-                                android:layout_marginStart="14dp"
-                                android:text="Dhuhr"
-                                android:textColor="@color/text_dark"
-                                android:textSize="16sp"
-                                android:textStyle="bold" />
-                        </LinearLayout>
-
-                        <TextView
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:text="12:25"
-                            android:textColor="@color/text_dark"
-                            android:textSize="16sp"
-                            android:textStyle="bold" />
-                    </LinearLayout>
-                </com.google.android.material.card.MaterialCardView>
-
-                <com.google.android.material.card.MaterialCardView
-                    android:layout_width="match_parent"
-                    android:layout_height="64dp"
-                    android:layout_marginBottom="10dp"
-                    app:cardCornerRadius="18dp"
-                    app:cardBackgroundColor="@color/asr_bg"
-                    app:strokeWidth="0dp">
-
-                    <LinearLayout
-                        android:layout_width="match_parent"
-                        android:layout_height="match_parent"
-                        android:gravity="center_vertical"
-                        android:orientation="horizontal"
-                        android:paddingHorizontal="16dp">
-
-                        <LinearLayout
-                            android:layout_width="0dp"
-                            android:layout_height="wrap_content"
-                            android:layout_weight="1"
-                            android:gravity="center_vertical"
-                            android:orientation="horizontal">
-
-                            <FrameLayout
-                                android:layout_width="40dp"
-                                android:layout_height="40dp"
-                                android:background="@drawable/bg_white_circle">
-
-                                <ImageView
-                                    android:layout_width="22dp"
-                                    android:layout_height="22dp"
-                                    android:layout_gravity="center"
-                                    android:src="@drawable/ic_wb_sunny_24"
-                                    android:tint="#FFB300" />
-                            </FrameLayout>
-
-                            <TextView
-                                android:layout_width="wrap_content"
-                                android:layout_height="wrap_content"
-                                android:layout_marginStart="14dp"
-                                android:text="Asr"
-                                android:textColor="@color/text_dark"
-                                android:textSize="16sp"
-                                android:textStyle="bold" />
-                        </LinearLayout>
-
-                        <TextView
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:text="16:32"
-                            android:textColor="@color/text_dark"
-                            android:textSize="16sp"
-                            android:textStyle="bold" />
-                    </LinearLayout>
-                </com.google.android.material.card.MaterialCardView>
-
-                <com.google.android.material.card.MaterialCardView
-                    android:layout_width="match_parent"
-                    android:layout_height="76dp"
-                    android:layout_marginBottom="10dp"
-                    app:cardCornerRadius="18dp"
-                    app:cardBackgroundColor="@color/isha_bg"
-                    app:strokeColor="#4DEEBD2B"
-                    app:strokeWidth="1dp">
-
-                    <LinearLayout
-                        android:layout_width="match_parent"
-                        android:layout_height="match_parent"
-                        android:gravity="center_vertical"
-                        android:orientation="horizontal"
-                        android:paddingHorizontal="16dp">
-
-                        <LinearLayout
-                            android:layout_width="0dp"
-                            android:layout_height="wrap_content"
-                            android:layout_weight="1"
-                            android:gravity="center_vertical"
-                            android:orientation="horizontal">
-
-                            <FrameLayout
-                                android:layout_width="40dp"
-                                android:layout_height="40dp"
-                                android:background="@drawable/bg_primary_circle">
-
-                                <ImageView
-                                    android:layout_width="22dp"
-                                    android:layout_height="22dp"
-                                    android:layout_gravity="center"
-                                    android:src="@drawable/ic_dark_mode_24"
-                                    android:tint="@android:color/white" />
-                            </FrameLayout>
-
-                            <LinearLayout
-                                android:layout_width="wrap_content"
-                                android:layout_height="wrap_content"
-                                android:layout_marginStart="14dp"
-                                android:orientation="vertical">
-
-                                <TextView
-                                    android:layout_width="wrap_content"
-                                    android:layout_height="wrap_content"
-                                    android:text="Magrib"
-                                    android:textColor="@color/text_dark"
-                                    android:textSize="16sp"
-                                    android:textStyle="bold" />
-
-                                <TextView
-                                    android:layout_width="wrap_content"
-                                    android:layout_height="wrap_content"
-                                    android:text="Current Prayer"
-                                    android:textColor="@color/primary_dark"
-                                    android:textSize="12sp"
-                                    android:textStyle="bold" />
-                            </LinearLayout>
-                        </LinearLayout>
-
-                        <TextView
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:text="18:36"
-                            android:textColor="@color/primary_dark"
-                            android:textSize="16sp"
-                            android:textStyle="bold" />
-                    </LinearLayout>
-                </com.google.android.material.card.MaterialCardView>
-
-                <com.google.android.material.card.MaterialCardView
-                    android:layout_width="match_parent"
-                    android:layout_height="64dp"
-                    app:cardCornerRadius="18dp"
-                    app:cardBackgroundColor="@color/isha_bg"
-                    app:strokeWidth="0dp">
-
-                    <LinearLayout
-                        android:layout_width="match_parent"
-                        android:layout_height="match_parent"
-                        android:gravity="center_vertical"
-                        android:orientation="horizontal"
-                        android:paddingHorizontal="16dp">
-
-                        <LinearLayout
-                            android:layout_width="0dp"
-                            android:layout_height="wrap_content"
-                            android:layout_weight="1"
-                            android:gravity="center_vertical"
-                            android:orientation="horizontal">
-
-                            <FrameLayout
-                                android:layout_width="40dp"
-                                android:layout_height="40dp"
-                                android:background="@drawable/bg_white_circle">
-
-                                <ImageView
-                                    android:layout_width="22dp"
-                                    android:layout_height="22dp"
-                                    android:layout_gravity="center"
-                                    android:src="@drawable/ic_bedtime_24"
-                                    android:tint="#9E9E9E" />
-                            </FrameLayout>
-
-                            <TextView
-                                android:layout_width="wrap_content"
-                                android:layout_height="wrap_content"
-                                android:layout_marginStart="14dp"
-                                android:text="Isha"
-                                android:textColor="@color/text_dark"
-                                android:textSize="16sp"
-                                android:textStyle="bold" />
-                        </LinearLayout>
-
-                        <TextView
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:text="20:00"
-                            android:textColor="@color/text_dark"
-                            android:textSize="16sp"
-                            android:textStyle="bold" />
-                    </LinearLayout>
-                </com.google.android.material.card.MaterialCardView>
-            </LinearLayout>
-
-            <!-- Daily Inspiration -->
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="18dp"
-                android:layout_marginBottom="10dp"
-                android:text="Daily Inspiration"
-                android:textColor="@color/text_dark"
-                android:textSize="18sp"
-                android:textStyle="bold" />
-
-            <com.google.android.material.card.MaterialCardView
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                app:cardCornerRadius="18dp"
-                app:cardBackgroundColor="@color/white"
-                app:strokeColor="#F0F0F0"
-                app:strokeWidth="1dp">
-
-                <FrameLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:padding="18dp">
-
-                    <ImageView
-                        android:layout_width="120dp"
-                        android:layout_height="120dp"
-                        android:layout_gravity="top|end"
-                        android:alpha="0.05"
-                        android:src="@drawable/ic_format_quote_24"
-                        android:tint="@color/text_dark" />
-
-                    <LinearLayout
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:orientation="vertical">
-
-                        <com.google.android.material.card.MaterialCardView
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            app:cardCornerRadius="999dp"
-                            app:cardBackgroundColor="#E8F5E9"
-                            app:strokeWidth="0dp">
-
-                            <LinearLayout
-                                android:layout_width="wrap_content"
-                                android:layout_height="wrap_content"
-                                android:gravity="center_vertical"
-                                android:orientation="horizontal"
-                                android:paddingHorizontal="12dp"
-                                android:paddingVertical="6dp">
-
-                                <ImageView
-                                    android:layout_width="14dp"
-                                    android:layout_height="14dp"
-                                    android:src="@drawable/ic_menu_book_24"
-                                    android:tint="#2E7D32" />
-
-                                <TextView
-                                    android:layout_width="wrap_content"
-                                    android:layout_height="wrap_content"
-                                    android:layout_marginStart="6dp"
-                                    android:text="Verse of the Day"
-                                    android:textColor="#2E7D32"
-                                    android:textSize="11sp"
-                                    android:textStyle="bold" />
-                            </LinearLayout>
-                        </com.google.android.material.card.MaterialCardView>
-
-                        <TextView
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
-                            android:layout_marginTop="12dp"
-                            android:text="“Indeed, with hardship [will be] ease.”"
-                            android:textColor="@color/text_dark"
-                            android:textSize="18sp"
-                            android:fontFamily="sans-serif-medium"
-                            android:lineSpacingExtra="4dp" />
+                            android:gravity="center_vertical"
+                            android:orientation="horizontal">
+
+                            <ImageView
+                                android:layout_width="14dp"
+                                android:layout_height="14dp"
+                                android:contentDescription="@null"
+                                android:src="@drawable/ic_calendar_today_24"
+                                app:tint="@color/hero_text" />
+
+                            <TextView
+                                android:id="@+id/prayerDate"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:layout_marginStart="4dp"
+                                android:text="20 Oct 2026"
+                                android:textColor="@color/hero_text"
+                                android:textSize="11sp"
+                                android:textStyle="bold" />
+
+                            <View
+                                android:layout_width="1dp"
+                                android:layout_height="14dp"
+                                android:layout_marginStart="9dp"
+                                android:layout_marginEnd="9dp"
+                                android:background="@color/hero_subtext" />
+
+                            <ImageView
+                                android:layout_width="14dp"
+                                android:layout_height="14dp"
+                                android:contentDescription="@null"
+                                android:src="@drawable/ic_location_on_24"
+                                app:tint="@color/hero_text" />
+
+                            <TextView
+                                android:id="@+id/prayerLocation"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:layout_marginStart="4dp"
+                                android:ellipsize="end"
+                                android:maxLines="1"
+                                android:text="Sylhet, Bangladesh"
+                                android:textColor="@color/hero_text"
+                                android:textSize="11sp"
+                                android:textStyle="bold" />
+                        </LinearLayout>
 
                         <TextView
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
                             android:layout_marginTop="8dp"
-                            android:text="Surah Ash-Sharh 94:6"
-                            android:textColor="#757575"
-                            android:textSize="13sp" />
+                            android:text="NEXT PRAYER"
+                            android:textColor="@color/hero_subtext"
+                            android:textSize="11sp"
+                            android:textStyle="bold" />
 
-                        <LinearLayout
+                        <TextView
+                            android:id="@+id/currentPrayerTime"
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:layout_marginTop="18dp"
+                            android:includeFontPadding="false"
+                            android:letterSpacing="-0.035"
+                            android:text="18:36"
+                            android:textColor="@color/hero_text"
+                            android:textSize="48sp"
+                            android:textStyle="bold" />
+
+                        <LinearLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:gravity="center_vertical"
                             android:orientation="horizontal">
 
-                            <com.google.android.material.card.MaterialCardView
+                            <TextView
+                                android:id="@+id/currentPrayerName"
                                 android:layout_width="wrap_content"
                                 android:layout_height="wrap_content"
-                                app:cardCornerRadius="14dp"
-                                app:cardBackgroundColor="#1AE0B400"
-                                app:strokeWidth="0dp">
-
-                                <TextView
-                                    android:layout_width="wrap_content"
-                                    android:layout_height="wrap_content"
-                                    android:paddingHorizontal="16dp"
-                                    android:paddingVertical="10dp"
-                                    android:text="Read More"
-                                    android:textColor="@color/primary_dark"
-                                    android:textSize="12sp"
-                                    android:textStyle="bold" />
-                            </com.google.android.material.card.MaterialCardView>
+                                android:text="Maghrib"
+                                android:textColor="@color/hero_text"
+                                android:textSize="14sp"
+                                android:textStyle="bold" />
 
                             <com.google.android.material.card.MaterialCardView
                                 android:layout_width="wrap_content"
                                 android:layout_height="wrap_content"
                                 android:layout_marginStart="10dp"
-                                app:cardCornerRadius="14dp"
-                                app:cardBackgroundColor="#F6F6F6"
-                                app:strokeWidth="0dp">
+                                app:cardBackgroundColor="@color/hero_scrim"
+                                app:cardCornerRadius="18dp"
+                                app:cardElevation="0dp"
+                                app:strokeColor="#557A5A18"
+                                app:strokeWidth="1dp">
 
                                 <LinearLayout
                                     android:layout_width="wrap_content"
                                     android:layout_height="wrap_content"
                                     android:gravity="center_vertical"
                                     android:orientation="horizontal"
-                                    android:paddingHorizontal="16dp"
-                                    android:paddingVertical="10dp">
+                                    android:paddingStart="9dp"
+                                    android:paddingTop="5dp"
+                                    android:paddingEnd="9dp"
+                                    android:paddingBottom="5dp">
 
                                     <ImageView
-                                        android:layout_width="16dp"
-                                        android:layout_height="16dp"
-                                        android:src="@drawable/ic_share_24"
-                                        android:tint="#666666" />
+                                        android:layout_width="14dp"
+                                        android:layout_height="14dp"
+                                        android:contentDescription="@null"
+                                        android:src="@drawable/ic_timelapse_24"
+                                        app:tint="@android:color/white" />
 
                                     <TextView
+                                        android:id="@+id/remainingTime"
                                         android:layout_width="wrap_content"
                                         android:layout_height="wrap_content"
-                                        android:layout_marginStart="6dp"
-                                        android:text="Share"
-                                        android:textColor="@color/text_share"
-                                        android:textSize="12sp"
+                                        android:layout_marginStart="5dp"
+                                        android:text="Remaining 0:53:30"
+                                        android:textColor="@android:color/white"
+                                        android:textSize="10sp"
                                         android:textStyle="bold" />
                                 </LinearLayout>
                             </com.google.android.material.card.MaterialCardView>
@@ -696,129 +257,321 @@
                 </FrameLayout>
             </com.google.android.material.card.MaterialCardView>
 
+            <!-- Quick Actions: six compact, touch-friendly Material cards. -->
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="15dp"
+                android:layout_marginBottom="3dp"
+                android:text="Quick Actions"
+                android:textColor="@color/text_dark"
+                android:textSize="17sp"
+                android:textStyle="bold" />
+
+            <androidx.recyclerview.widget.RecyclerView
+                android:id="@+id/featuresRecycler"
+                android:layout_width="match_parent"
+                android:layout_height="216dp"
+                android:layout_marginStart="-2dp"
+                android:layout_marginEnd="-2dp"
+                android:nestedScrollingEnabled="false"
+                android:overScrollMode="never"
+                tools:itemCount="6"
+                tools:layoutManager="androidx.recyclerview.widget.GridLayoutManager" />
+
+            <!-- Prayer Times compacted into two rows rather than five tall list items. -->
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="13dp"
+                android:layout_marginBottom="8dp"
+                android:text="Prayer Times"
+                android:textColor="@color/text_dark"
+                android:textSize="17sp"
+                android:textStyle="bold" />
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal">
+
+                    <com.google.android.material.card.MaterialCardView
+                        android:id="@+id/fajrTime"
+                        android:layout_width="0dp"
+                        android:layout_height="76dp"
+                        android:layout_marginEnd="4dp"
+                        android:layout_weight="1"
+                        app:cardBackgroundColor="@color/fajar_bg"
+                        app:cardCornerRadius="15dp"
+                        app:cardElevation="0dp"
+                        app:strokeWidth="0dp">
+                        <LinearLayout android:layout_width="match_parent" android:layout_height="match_parent" android:gravity="center" android:orientation="vertical">
+                            <ImageView android:layout_width="18dp" android:layout_height="18dp" android:src="@drawable/ic_wb_twilight_24" app:tint="#C88316" android:contentDescription="@null" />
+                            <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginTop="2dp" android:text="Fajr" android:textColor="@color/text_dark" android:textSize="11sp" />
+                            <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="05:36" android:textColor="@color/text_dark" android:textSize="14sp" android:textStyle="bold" />
+                        </LinearLayout>
+                    </com.google.android.material.card.MaterialCardView>
+
+                    <com.google.android.material.card.MaterialCardView
+                        android:id="@+id/dhuhrTime"
+                        android:layout_width="0dp"
+                        android:layout_height="76dp"
+                        android:layout_marginStart="4dp"
+                        android:layout_marginEnd="4dp"
+                        android:layout_weight="1"
+                        app:cardBackgroundColor="@color/dhuhr_bg"
+                        app:cardCornerRadius="15dp"
+                        app:cardElevation="0dp"
+                        app:strokeWidth="0dp">
+                        <LinearLayout android:layout_width="match_parent" android:layout_height="match_parent" android:gravity="center" android:orientation="vertical">
+                            <ImageView android:layout_width="18dp" android:layout_height="18dp" android:src="@drawable/ic_sunny_24" app:tint="#C58B0B" android:contentDescription="@null" />
+                            <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginTop="2dp" android:text="Dhuhr" android:textColor="@color/text_dark" android:textSize="11sp" />
+                            <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="12:25" android:textColor="@color/text_dark" android:textSize="14sp" android:textStyle="bold" />
+                        </LinearLayout>
+                    </com.google.android.material.card.MaterialCardView>
+
+                    <com.google.android.material.card.MaterialCardView
+                        android:id="@+id/asrTime"
+                        android:layout_width="0dp"
+                        android:layout_height="76dp"
+                        android:layout_marginStart="4dp"
+                        android:layout_weight="1"
+                        app:cardBackgroundColor="@color/asr_bg"
+                        app:cardCornerRadius="15dp"
+                        app:cardElevation="0dp"
+                        app:strokeWidth="0dp">
+                        <LinearLayout android:layout_width="match_parent" android:layout_height="match_parent" android:gravity="center" android:orientation="vertical">
+                            <ImageView android:layout_width="18dp" android:layout_height="18dp" android:src="@drawable/ic_sunny_24" app:tint="#D77835" android:contentDescription="@null" />
+                            <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginTop="2dp" android:text="Asr" android:textColor="@color/text_dark" android:textSize="11sp" />
+                            <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="16:32" android:textColor="@color/text_dark" android:textSize="14sp" android:textStyle="bold" />
+                        </LinearLayout>
+                    </com.google.android.material.card.MaterialCardView>
+                </LinearLayout>
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
+                    android:orientation="horizontal">
+
+                    <com.google.android.material.card.MaterialCardView
+                        android:id="@+id/maghribTime"
+                        android:layout_width="0dp"
+                        android:layout_height="76dp"
+                        android:layout_marginEnd="4dp"
+                        android:layout_weight="1"
+                        app:cardBackgroundColor="@color/prayer_selected"
+                        app:cardCornerRadius="15dp"
+                        app:cardElevation="0dp"
+                        app:strokeColor="@color/primary_dark"
+                        app:strokeWidth="1dp">
+                        <LinearLayout android:layout_width="match_parent" android:layout_height="match_parent" android:gravity="center" android:orientation="vertical">
+                            <ImageView android:layout_width="18dp" android:layout_height="18dp" android:src="@drawable/ic_bedtime_24" app:tint="@color/primary_dark" android:contentDescription="@null" />
+                            <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginTop="2dp" android:text="Maghrib" android:textColor="@color/text_dark" android:textSize="11sp" android:textStyle="bold" />
+                            <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="18:36" android:textColor="@color/primary_dark" android:textSize="14sp" android:textStyle="bold" />
+                        </LinearLayout>
+                    </com.google.android.material.card.MaterialCardView>
+
+                    <com.google.android.material.card.MaterialCardView
+                        android:id="@+id/ishaTime"
+                        android:layout_width="0dp"
+                        android:layout_height="76dp"
+                        android:layout_marginStart="4dp"
+                        android:layout_weight="1"
+                        app:cardBackgroundColor="@color/isha_bg"
+                        app:cardCornerRadius="15dp"
+                        app:cardElevation="0dp"
+                        app:strokeWidth="0dp">
+                        <LinearLayout android:layout_width="match_parent" android:layout_height="match_parent" android:gravity="center" android:orientation="vertical">
+                            <ImageView android:layout_width="18dp" android:layout_height="18dp" android:src="@drawable/ic_bedtime_24" app:tint="@color/muted_text" android:contentDescription="@null" />
+                            <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginTop="2dp" android:text="Isha" android:textColor="@color/text_dark" android:textSize="11sp" />
+                            <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="20:00" android:textColor="@color/text_dark" android:textSize="14sp" android:textStyle="bold" />
+                        </LinearLayout>
+                    </com.google.android.material.card.MaterialCardView>
+
+                    <View android:layout_width="0dp" android:layout_height="1dp" android:layout_weight="1" />
+                </LinearLayout>
+            </LinearLayout>
+
+            <!-- Verse card. Colors are theme resources so it stays readable in night mode. -->
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="14dp"
+                android:layout_marginBottom="8dp"
+                android:text="Daily Inspiration"
+                android:textColor="@color/text_dark"
+                android:textSize="17sp"
+                android:textStyle="bold" />
+
+            <com.google.android.material.card.MaterialCardView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                app:cardBackgroundColor="@color/white"
+                app:cardCornerRadius="18dp"
+                app:cardElevation="0dp"
+                app:strokeColor="@color/outline"
+                app:strokeWidth="1dp">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:padding="14dp">
+
+                    <com.google.android.material.chip.Chip
+                        android:layout_width="wrap_content"
+                        android:layout_height="30dp"
+                        android:checkable="false"
+                        android:clickable="false"
+                        android:text="Verse of the Day"
+                        android:textColor="@color/verse_badge_text"
+                        android:textSize="10sp"
+                        app:chipBackgroundColor="@color/verse_badge_bg"
+                        app:chipCornerRadius="16dp"
+                        app:chipIcon="@drawable/ic_menu_book_24"
+                        app:chipIconSize="14dp"
+                        app:chipIconTint="@color/verse_badge_text"
+                        app:chipMinHeight="30dp"
+                        app:chipStartPadding="8dp"
+                        app:chipEndPadding="8dp"
+                        app:ensureMinTouchTargetSize="false" />
+
+                    <TextView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="7dp"
+                        android:text="“Indeed, with hardship comes ease.”"
+                        android:textColor="@color/text_dark"
+                        android:textSize="16sp"
+                        android:textStyle="bold" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="3dp"
+                        android:text="Surah Ash-Sharh 94:6"
+                        android:textColor="@color/muted_text"
+                        android:textSize="12sp" />
+
+                    <LinearLayout
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="10dp"
+                        android:orientation="horizontal">
+
+                        <com.google.android.material.button.MaterialButton
+                            android:id="@+id/readVerseButton"
+                            style="Widget.Material3.Button.TonalButton"
+                            android:layout_width="wrap_content"
+                            android:layout_height="36dp"
+                            android:minWidth="0dp"
+                            android:text="Read More"
+                            android:textColor="@color/primary_dark"
+                            android:textSize="11sp"
+                            app:backgroundTint="@color/nav_selected_bg"
+                            app:cornerRadius="12dp"
+                            android:insetTop="0dp"
+                            android:insetBottom="0dp"
+                            app:iconPadding="4dp" />
+
+                        <com.google.android.material.button.MaterialButton
+                            android:id="@+id/shareVerseButton"
+                            style="Widget.Material3.Button.TonalButton"
+                            android:layout_width="wrap_content"
+                            android:layout_height="36dp"
+                            android:layout_marginStart="8dp"
+                            android:minWidth="0dp"
+                            android:text="Share"
+                            android:textColor="@color/text_dark"
+                            android:textSize="11sp"
+                            app:backgroundTint="@color/subtle_button"
+                            app:cornerRadius="12dp"
+                            app:icon="@drawable/ic_share_24"
+                            app:iconPadding="5dp"
+                            app:iconSize="16dp"
+                            app:iconTint="@color/text_dark"
+                            android:insetTop="0dp"
+                            android:insetBottom="0dp" />
+                    </LinearLayout>
+                </LinearLayout>
+            </com.google.android.material.card.MaterialCardView>
         </LinearLayout>
     </ScrollView>
 
-    <!-- Bottom Navigation -->
+    <!-- Compact custom nav is kept so this patch does not introduce new destinations. -->
     <com.google.android.material.card.MaterialCardView
         android:id="@+id/bottomNav"
         android:layout_width="match_parent"
-        android:layout_height="96dp"
+        android:layout_height="68dp"
         android:layout_alignParentBottom="true"
-        app:cardCornerRadius="0dp"
-        app:cardElevation="10dp"
         app:cardBackgroundColor="@color/white"
-        app:strokeWidth="1dp"
-        app:strokeColor="#EEEEEE">
+        app:cardCornerRadius="20dp"
+        app:cardElevation="4dp"
+        app:strokeColor="@color/outline"
+        app:strokeWidth="1dp">
 
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="match_parent"
             android:gravity="center"
             android:orientation="horizontal"
-            android:paddingHorizontal="18dp"
-            android:paddingTop="14dp"
-            android:paddingBottom="18dp">
+            android:paddingStart="8dp"
+            android:paddingTop="5dp"
+            android:paddingEnd="8dp"
+            android:paddingBottom="5dp">
 
             <LinearLayout
                 android:layout_width="0dp"
-                android:layout_height="wrap_content"
+                android:layout_height="match_parent"
                 android:layout_weight="1"
                 android:gravity="center"
                 android:orientation="vertical">
-
                 <com.google.android.material.card.MaterialCardView
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    app:cardCornerRadius="999dp"
-                    app:cardBackgroundColor="#1AEEBD2B"
+                    android:layout_width="34dp"
+                    android:layout_height="30dp"
+                    app:cardBackgroundColor="@color/nav_selected_bg"
+                    app:cardCornerRadius="15dp"
+                    app:cardElevation="0dp"
                     app:strokeWidth="0dp">
-
-                    <ImageView
-                        android:layout_width="24dp"
-                        android:layout_height="24dp"
-                        android:padding="12dp"
-                        android:src="@drawable/ic_home_24"
-                        android:tint="@color/primary_dark" />
+                    <ImageView android:layout_width="22dp" android:layout_height="22dp" android:layout_gravity="center" android:src="@drawable/ic_home_24" app:tint="@color/primary_dark" android:contentDescription="@null" />
                 </com.google.android.material.card.MaterialCardView>
-
-                <TextView
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="6dp"
-                    android:text="Home"
-                    android:textColor="@color/primary_dark"
-                    android:textSize="11sp"
-                    android:textStyle="bold" />
+                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginTop="3dp" android:text="Home" android:textColor="@color/primary_dark" android:textSize="10sp" android:textStyle="bold" />
             </LinearLayout>
 
             <LinearLayout
                 android:layout_width="0dp"
-                android:layout_height="wrap_content"
+                android:layout_height="match_parent"
                 android:layout_weight="1"
                 android:gravity="center"
                 android:orientation="vertical">
-
-                <ImageView
-                    android:layout_width="24dp"
-                    android:layout_height="24dp"
-                    android:padding="4dp"
-                    android:src="@drawable/ic_menu_book_24"
-                    android:tint="#9E9E9E" />
-
-                <TextView
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="6dp"
-                    android:text="Quran"
-                    android:textColor="@color/card_text"
-                    android:textSize="11sp" />
+                <ImageView android:layout_width="22dp" android:layout_height="22dp" android:src="@drawable/ic_menu_book_24" app:tint="@color/muted_text" android:contentDescription="@null" />
+                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginTop="3dp" android:text="Quran" android:textColor="@color/muted_text" android:textSize="10sp" />
             </LinearLayout>
 
             <LinearLayout
                 android:layout_width="0dp"
-                android:layout_height="wrap_content"
+                android:layout_height="match_parent"
                 android:layout_weight="1"
                 android:gravity="center"
                 android:orientation="vertical">
-
-                <ImageView
-                    android:layout_width="24dp"
-                    android:layout_height="24dp"
-                    android:padding="4dp"
-                    android:src="@drawable/ic_explore_24"
-                    android:tint="#9E9E9E" />
-
-                <TextView
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="6dp"
-                    android:text="Qibla"
-                    android:textColor="@color/card_text"
-                    android:textSize="11sp" />
+                <ImageView android:layout_width="22dp" android:layout_height="22dp" android:src="@drawable/ic_explore_24" app:tint="@color/muted_text" android:contentDescription="@null" />
+                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginTop="3dp" android:text="Qibla" android:textColor="@color/muted_text" android:textSize="10sp" />
             </LinearLayout>
 
             <LinearLayout
                 android:layout_width="0dp"
-                android:layout_height="wrap_content"
+                android:layout_height="match_parent"
                 android:layout_weight="1"
                 android:gravity="center"
                 android:orientation="vertical">
-
-                <ImageView
-                    android:layout_width="24dp"
-                    android:layout_height="24dp"
-                    android:padding="4dp"
-                    android:src="@drawable/ic_fingerprint_24"
-                    android:tint="#9E9E9E" />
-
-                <TextView
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="6dp"
-                    android:text="Tasbih"
-                    android:textColor="@color/card_text"
-                    android:textSize="11sp" />
+                <ImageView android:layout_width="22dp" android:layout_height="22dp" android:src="@drawable/ic_fingerprint_24" app:tint="@color/muted_text" android:contentDescription="@null" />
+                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginTop="3dp" android:text="Tasbih" android:textColor="@color/muted_text" android:textSize="10sp" />
             </LinearLayout>
         </LinearLayout>
     </com.google.android.material.card.MaterialCardView>
