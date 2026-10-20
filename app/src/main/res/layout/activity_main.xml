@@ -131,6 +131,7 @@
                                     android:layout_width="wrap_content"
                                     android:layout_height="wrap_content"
                                     android:layout_marginStart="4dp"
+                                    android:id="@+id/prayerDate"
                                     android:text="2 June, 2025"
                                     android:textColor="#E6FFFFFF"
                                     android:textSize="13sp"
@@ -222,12 +223,22 @@
                 </FrameLayout>
             </com.google.android.material.card.MaterialCardView>
             
-            <!-- Features Grid -->
+            <!-- Quick Actions -->
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="18dp"
+                android:layout_marginBottom="4dp"
+                android:text="Quick Actions"
+                android:textColor="@color/text_dark"
+                android:textSize="18sp"
+                android:textStyle="bold" />
+
             <androidx.recyclerview.widget.RecyclerView
                 android:id="@+id/featuresRecycler"
                 android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="14dp"
+                android:layout_height="244dp"
+                android:layout_marginTop="4dp"
                 android:nestedScrollingEnabled="false"
                 android:overScrollMode="never"/>
                 

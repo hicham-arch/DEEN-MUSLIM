@@ -6,10 +6,10 @@
     <color name="text_dark">#181611</color>
     <color name="white">#FFFFFF</color>
     <color name="card_text">#374151</color>
-    <color name="text_share">#FFF3E0</color>
+    <color name="text_share">#5F5141</color>
 
 
-    <color name="fajar_bg">#FFF3E0</color>
+    <color name="fajar_bg">#5F5141</color>
     <color name="dhuhr_bg">#FFFDE7</color>
     <color name="asr_bg">#FFF8E1</color>
     <color name="isha_bg">#F8FAFC</color>

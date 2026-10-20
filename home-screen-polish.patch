@@ -1,0 +1,42 @@
+diff --git a/app/src/main/res/layout/activity_main.xml b/app/src/main/res/layout/activity_main.xml
+--- a/app/src/main/res/layout/activity_main.xml
++++ b/app/src/main/res/layout/activity_main.xml
+@@ -123,8 +123,9 @@
+                                 <TextView
+                                     android:layout_width="wrap_content"
+                                     android:layout_height="wrap_content"
+                                     android:layout_marginStart="4dp"
++                                    android:id="@+id/prayerDate"
+                                     android:text="2 June, 2025"
+                                     android:textColor="#E6FFFFFF"
+                                     android:textSize="13sp"
+                                     android:textStyle="bold" />
+@@ -220,8 +220,18 @@
+-            <!-- Features Grid -->
++            <!-- Quick Actions -->
++            <TextView
++                android:layout_width="wrap_content"
++                android:layout_height="wrap_content"
++                android:layout_marginTop="18dp"
++                android:layout_marginBottom="4dp"
++                android:text="Quick Actions"
++                android:textColor="@color/text_dark"
++                android:textSize="18sp"
++                android:textStyle="bold" />
++
+             <androidx.recyclerview.widget.RecyclerView
+                 android:id="@+id/featuresRecycler"
+                 android:layout_width="match_parent"
+-                android:layout_height="wrap_content"
+-                android:layout_marginTop="14dp"
++                android:layout_height="244dp"
++                android:layout_marginTop="4dp"
+                 android:nestedScrollingEnabled="false"
+                 android:overScrollMode="never"/>
+
+diff --git a/app/src/main/res/values/colors.xml b/app/src/main/res/values/colors.xml
+--- a/app/src/main/res/values/colors.xml
++++ b/app/src/main/res/values/colors.xml
+@@ -9,1 +9,1 @@
+-    <color name="text_share">#FFF3E0</color>
++    <color name="text_share">#5F5141</color>
