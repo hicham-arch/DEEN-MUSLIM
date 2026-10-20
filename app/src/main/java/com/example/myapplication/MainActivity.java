@@ -1,12 +1,23 @@
 package com.example.myapplication;
 
+import android.Manifest;
 import android.content.Intent;
 import android.content.SharedPreferences;
+import android.content.pm.PackageManager;
+import android.location.Location;
+import android.location.LocationListener;
+import android.location.LocationManager;
 import android.os.Bundle;
+import android.os.Handler;
+import android.os.Looper;
 import android.widget.TextView;
+import android.widget.Toast;
 
+import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.app.AppCompatDelegate;
+import androidx.core.app.ActivityCompat;
+import androidx.core.content.ContextCompat;
 import androidx.recyclerview.widget.GridLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
@@ -14,39 +25,291 @@ import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Calendar;
 import java.util.Date;
 import java.util.Locale;
+import java.util.concurrent.TimeUnit;
 
 public class MainActivity extends AppCompatActivity {
 
     private static final String PREFERENCES_NAME = "deen_muslim_settings";
     private static final String KEY_THEME_MODE = "theme_mode";
+    private static final int LOCATION_PERMISSION_REQUEST = 1001;
+
+    private PrayerPrefs prefs;
+    private TextView prayerLocation, currentPrayerTime, currentPrayerName, remainingTime;
+    private TextView fajrTime, dhuhrTime, asrTime, maghribTime, ishaTime;
+
+    private final Handler handler = new Handler(Looper.getMainLooper());
+    private Runnable remainingTimeUpdater;
+    private PrayerTimings currentTimings;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
-        // Apply the saved mode before inflating the views, avoiding a light-theme flash.
         applySavedTheme();
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
+        prefs = new PrayerPrefs(this);
+
+        bindViews();
         updatePrayerDate();
         setupFeatureGrid();
 
         findViewById(R.id.appearanceButton).setOnClickListener(v -> showAppearanceDialog());
+
+        // Start loading prayer times
+        loadPrayerTimes();
     }
 
+    private void bindViews() {
+        prayerLocation   = findViewById(R.id.prayerLocation);
+        currentPrayerTime = findViewById(R.id.currentPrayerTime);
+        currentPrayerName = findViewById(R.id.currentPrayerName);
+        remainingTime    = findViewById(R.id.remainingTime);
+
+        fajrTime    = findViewById(R.id.fajrTime);
+        dhuhrTime   = findViewById(R.id.dhuhrTime);
+        asrTime     = findViewById(R.id.asrTime);
+        maghribTime = findViewById(R.id.maghribTime);
+        ishaTime    = findViewById(R.id.ishaTime);
+    }
+
+    private void loadPrayerTimes() {
+        if (prefs.isUseGps()) {
+            requestLocationAndFetch();
+        } else {
+            fetchByCity();
+        }
+    }
+
+    private void requestLocationAndFetch() {
+        if (ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION)
+                != PackageManager.PERMISSION_GRANTED) {
+            ActivityCompat.requestPermissions(this,
+                    new String[]{Manifest.permission.ACCESS_FINE_LOCATION,
+                            Manifest.permission.ACCESS_COARSE_LOCATION},
+                    LOCATION_PERMISSION_REQUEST);
+            return;
+        }
+        getLocationAndFetch();
+    }
+
+    private void getLocationAndFetch() {
+        LocationManager lm = (LocationManager) getSystemService(LOCATION_SERVICE);
+        if (lm == null) {
+            fetchByCity();
+            return;
+        }
+
+        try {
+            Location last = null;
+            if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION)
+                    == PackageManager.PERMISSION_GRANTED) {
+                last = lm.getLastKnownLocation(LocationManager.GPS_PROVIDER);
+                if (last == null) {
+                    last = lm.getLastKnownLocation(LocationManager.NETWORK_PROVIDER);
+                }
+            }
+
+            if (last != null) {
+                prefs.saveLastLocation(last.getLatitude(), last.getLongitude());
+                fetchByLocation(last.getLatitude(), last.getLongitude());
+            } else {
+                // Request a single update
+                lm.requestSingleUpdate(LocationManager.NETWORK_PROVIDER, new LocationListener() {
+                    @Override
+                    public void onLocationChanged(@NonNull Location location) {
+                        prefs.saveLastLocation(location.getLatitude(), location.getLongitude());
+                        fetchByLocation(location.getLatitude(), location.getLongitude());
+                    }
+                    @Override public void onProviderEnabled(@NonNull String provider) {}
+                    @Override public void onProviderDisabled(@NonNull String provider) {
+                        fetchByCity();
+                    }
+                }, Looper.getMainLooper());
+
+                // Fallback after 8 seconds
+                handler.postDelayed(this::fetchByCity, 8000);
+            }
+        } catch (SecurityException e) {
+            fetchByCity();
+        }
+    }
+
+    private void fetchByLocation(double lat, double lng) {
+        String date = new SimpleDateFormat("dd-MM-yyyy", Locale.US).format(new Date());
+        int method = prefs.getMethod();
+
+        PrayerTimesApi.getTimingsByLocation(lat, lng, method, date, new PrayerTimesApi.Callback() {
+            @Override
+            public void onSuccess(PrayerResponse response) {
+                runOnUiThread(() -> updateUI(response));
+            }
+            @Override
+            public void onError(String message) {
+                runOnUiThread(() -> {
+                    Toast.makeText(MainActivity.this, "GPS failed, using city…", Toast.LENGTH_SHORT).show();
+                    fetchByCity();
+                });
+            }
+        });
+    }
+
+    private void fetchByCity() {
+        String city = prefs.getCity();
+        String country = prefs.getCountry();
+        String date = new SimpleDateFormat("dd-MM-yyyy", Locale.US).format(new Date());
+        int method = prefs.getMethod();
+
+        PrayerTimesApi.getTimingsByCity(city, country, method, date, new PrayerTimesApi.Callback() {
+            @Override
+            public void onSuccess(PrayerResponse response) {
+                runOnUiThread(() -> updateUI(response));
+            }
+            @Override
+            public void onError(String message) {
+                runOnUiThread(() ->
+                        Toast.makeText(MainActivity.this, "Error: " + message, Toast.LENGTH_LONG).show());
+            }
+        });
+    }
+
+    private void updateUI(PrayerResponse response) {
+        if (response == null || response.data == null || response.data.timings == null) return;
+
+        currentTimings = response.data.timings;
+
+        // Location text
+        if (prayerLocation != null) {
+            String loc = prefs.getCity() + ", " + prefs.getCountry();
+            if (response.data.meta != null && prefs.isUseGps()) {
+                loc = String.format(Locale.US, "%.2f, %.2f", response.data.meta.latitude, response.data.meta.longitude);
+            }
+            prayerLocation.setText(loc);
+        }
+
+        // Fill prayer list
+        if (fajrTime != null)    fajrTime.setText(cleanTime(currentTimings.Fajr));
+        if (dhuhrTime != null)   dhuhrTime.setText(cleanTime(currentTimings.Dhuhr));
+        if (asrTime != null)     asrTime.setText(cleanTime(currentTimings.Asr));
+        if (maghribTime != null) maghribTime.setText(cleanTime(currentTimings.Maghrib));
+        if (ishaTime != null)    ishaTime.setText(cleanTime(currentTimings.Isha));
+
+        // Next prayer + remaining time
+        updateNextPrayer();
+        startRemainingTimeTicker();
+    }
+
+    private String cleanTime(String t) {
+        if (t == null) return "--:--";
+        // Remove timezone suffix if present (e.g. "18:36 (BST)")
+        return t.split(" ")[0];
+    }
+
+    private void updateNextPrayer() {
+        if (currentTimings == null) return;
+
+        String[] names = {"Fajr", "Dhuhr", "Asr", "Maghrib", "Isha"};
+        String[] times = {
+                cleanTime(currentTimings.Fajr),
+                cleanTime(currentTimings.Dhuhr),
+                cleanTime(currentTimings.Asr),
+                cleanTime(currentTimings.Maghrib),
+                cleanTime(currentTimings.Isha)
+        };
+
+        Calendar now = Calendar.getInstance();
+        int nowMinutes = now.get(Calendar.HOUR_OF_DAY) * 60 + now.get(Calendar.MINUTE);
+
+        String nextName = names[0];
+        String nextTime = times[0];
+        int nextMinutes = parseMinutes(times[0]) + 24 * 60; // tomorrow Fajr as fallback
+
+        for (int i = 0; i < times.length; i++) {
+            int t = parseMinutes(times[i]);
+            if (t > nowMinutes) {
+                nextName = names[i];
+                nextTime = times[i];
+                nextMinutes = t;
+                break;
+            }
+        }
+
+        if (currentPrayerName != null) currentPrayerName.setText(nextName);
+        if (currentPrayerTime != null) currentPrayerTime.setText(nextTime);
+
+        // Remaining
+        int remaining = nextMinutes - nowMinutes;
+        if (remaining < 0) remaining += 24 * 60;
+        updateRemainingText(remaining);
+    }
+
+    private int parseMinutes(String hhmm) {
+        try {
+            String[] p = hhmm.split(":");
+            return Integer.parseInt(p[0]) * 60 + Integer.parseInt(p[1]);
+        } catch (Exception e) {
+            return 0;
+        }
+    }
+
+    private void updateRemainingText(int totalMinutes) {
+        if (remainingTime == null) return;
+        long hours = totalMinutes / 60;
+        long mins = totalMinutes % 60;
+        remainingTime.setText(String.format(Locale.getDefault(),
+                "Remaining Time: %d:%02d:00", hours, mins));
+    }
+
+    private void startRemainingTimeTicker() {
+        if (remainingTimeUpdater != null) handler.removeCallbacks(remainingTimeUpdater);
+        remainingTimeUpdater = new Runnable() {
+            @Override
+            public void run() {
+                updateNextPrayer();
+                handler.postDelayed(this, 30_000); // every 30 sec
+            }
+        };
+        handler.postDelayed(remainingTimeUpdater, 30_000);
+    }
+
+    @Override
+    public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+        if (requestCode == LOCATION_PERMISSION_REQUEST) {
+            if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+                getLocationAndFetch();
+            } else {
+                prefs.setUseGps(false);
+                fetchByCity();
+            }
+        }
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        // Refresh if user changed settings in ReminderActivity
+        if (prefs != null) loadPrayerTimes();
+    }
+
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        if (remainingTimeUpdater != null) handler.removeCallbacks(remainingTimeUpdater);
+    }
+
+    // ---------- Theme (already in your code) ----------
     private void applySavedTheme() {
         SharedPreferences preferences = getSharedPreferences(PREFERENCES_NAME, MODE_PRIVATE);
-        int savedMode = preferences.getInt(
-                KEY_THEME_MODE, AppCompatDelegate.MODE_NIGHT_FOLLOW_SYSTEM);
+        int savedMode = preferences.getInt(KEY_THEME_MODE, AppCompatDelegate.MODE_NIGHT_FOLLOW_SYSTEM);
         AppCompatDelegate.setDefaultNightMode(savedMode);
     }
 
-    /** Opens a persistent Light / Dark / System appearance selector. */
     private void showAppearanceDialog() {
         SharedPreferences preferences = getSharedPreferences(PREFERENCES_NAME, MODE_PRIVATE);
-        int currentMode = preferences.getInt(
-                KEY_THEME_MODE, AppCompatDelegate.MODE_NIGHT_FOLLOW_SYSTEM);
+        int currentMode = preferences.getInt(KEY_THEME_MODE, AppCompatDelegate.MODE_NIGHT_FOLLOW_SYSTEM);
 
         final int[] modes = {
                 AppCompatDelegate.MODE_NIGHT_FOLLOW_SYSTEM,
@@ -64,18 +327,15 @@ public class MainActivity extends AppCompatActivity {
 
         new MaterialAlertDialogBuilder(this)
                 .setTitle("Appearance")
-                .setMessage("Choose how DEEN MUSLIM looks")
                 .setSingleChoiceItems(labels, selected, (dialog, which) -> {
-                    int mode = modes[which];
-                    preferences.edit().putInt(KEY_THEME_MODE, mode).apply();
-                    AppCompatDelegate.setDefaultNightMode(mode);
+                    preferences.edit().putInt(KEY_THEME_MODE, modes[which]).apply();
+                    AppCompatDelegate.setDefaultNightMode(modes[which]);
                     dialog.dismiss();
                 })
                 .setNegativeButton("Cancel", null)
                 .show();
     }
 
-    /** Keeps the displayed date current instead of leaving a sample date in the layout. */
     private void updatePrayerDate() {
         TextView prayerDate = findViewById(R.id.prayerDate);
         if (prayerDate != null) {
@@ -86,11 +346,8 @@ public class MainActivity extends AppCompatActivity {
 
     private void setupFeatureGrid() {
         RecyclerView recycler = findViewById(R.id.featuresRecycler);
-        if (recycler == null) {
-            return;
-        }
+        if (recycler == null) return;
 
-        // The grid is inside the page ScrollView; let the page handle scrolling.
         recycler.setNestedScrollingEnabled(false);
         recycler.setLayoutManager(new GridLayoutManager(this, 3));
 
@@ -122,13 +379,8 @@ public class MainActivity extends AppCompatActivity {
                 case "Donate":
                     startActivity(new Intent(this, DonateActivity.class));
                     break;
-                default:
-                    // Ignore unknown actions safely.
-                    break;
             }
         });
-
         recycler.setAdapter(adapter);
-        recycler.setVisibility(android.view.View.VISIBLE);
     }
 }

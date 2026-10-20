@@ -301,7 +301,6 @@
                     android:orientation="horizontal">
 
                     <com.google.android.material.card.MaterialCardView
-                        android:id="@+id/fajrTime"
                         android:layout_width="0dp"
                         android:layout_height="76dp"
                         android:layout_marginEnd="4dp"
@@ -313,12 +312,11 @@
                         <LinearLayout android:layout_width="match_parent" android:layout_height="match_parent" android:gravity="center" android:orientation="vertical">
                             <ImageView android:layout_width="18dp" android:layout_height="18dp" android:src="@drawable/ic_wb_twilight_24" app:tint="#C88316" android:contentDescription="@null" />
                             <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginTop="2dp" android:text="Fajr" android:textColor="@color/text_dark" android:textSize="11sp" />
-                            <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="05:36" android:textColor="@color/text_dark" android:textSize="14sp" android:textStyle="bold" />
+                            <TextView android:id="@+id/fajrTime" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="05:36" android:textColor="@color/text_dark" android:textSize="14sp" android:textStyle="bold" />
                         </LinearLayout>
                     </com.google.android.material.card.MaterialCardView>
 
                     <com.google.android.material.card.MaterialCardView
-                        android:id="@+id/dhuhrTime"
                         android:layout_width="0dp"
                         android:layout_height="76dp"
                         android:layout_marginStart="4dp"
@@ -331,12 +329,11 @@
                         <LinearLayout android:layout_width="match_parent" android:layout_height="match_parent" android:gravity="center" android:orientation="vertical">
                             <ImageView android:layout_width="18dp" android:layout_height="18dp" android:src="@drawable/ic_sunny_24" app:tint="#C58B0B" android:contentDescription="@null" />
                             <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginTop="2dp" android:text="Dhuhr" android:textColor="@color/text_dark" android:textSize="11sp" />
-                            <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="12:25" android:textColor="@color/text_dark" android:textSize="14sp" android:textStyle="bold" />
+                            <TextView android:id="@+id/dhuhrTime" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="12:25" android:textColor="@color/text_dark" android:textSize="14sp" android:textStyle="bold" />
                         </LinearLayout>
                     </com.google.android.material.card.MaterialCardView>
 
                     <com.google.android.material.card.MaterialCardView
-                        android:id="@+id/asrTime"
                         android:layout_width="0dp"
                         android:layout_height="76dp"
                         android:layout_marginStart="4dp"
@@ -348,7 +345,7 @@
                         <LinearLayout android:layout_width="match_parent" android:layout_height="match_parent" android:gravity="center" android:orientation="vertical">
                             <ImageView android:layout_width="18dp" android:layout_height="18dp" android:src="@drawable/ic_sunny_24" app:tint="#D77835" android:contentDescription="@null" />
                             <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginTop="2dp" android:text="Asr" android:textColor="@color/text_dark" android:textSize="11sp" />
-                            <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="16:32" android:textColor="@color/text_dark" android:textSize="14sp" android:textStyle="bold" />
+                            <TextView android:id="@+id/asrTime" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="16:32" android:textColor="@color/text_dark" android:textSize="14sp" android:textStyle="bold" />
                         </LinearLayout>
                     </com.google.android.material.card.MaterialCardView>
                 </LinearLayout>
@@ -360,7 +357,6 @@
                     android:orientation="horizontal">
 
                     <com.google.android.material.card.MaterialCardView
-                        android:id="@+id/maghribTime"
                         android:layout_width="0dp"
                         android:layout_height="76dp"
                         android:layout_marginEnd="4dp"
@@ -373,12 +369,11 @@
                         <LinearLayout android:layout_width="match_parent" android:layout_height="match_parent" android:gravity="center" android:orientation="vertical">
                             <ImageView android:layout_width="18dp" android:layout_height="18dp" android:src="@drawable/ic_bedtime_24" app:tint="@color/primary_dark" android:contentDescription="@null" />
                             <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginTop="2dp" android:text="Maghrib" android:textColor="@color/text_dark" android:textSize="11sp" android:textStyle="bold" />
-                            <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="18:36" android:textColor="@color/primary_dark" android:textSize="14sp" android:textStyle="bold" />
+                            <TextView android:id="@+id/maghribTime" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="18:36" android:textColor="@color/primary_dark" android:textSize="14sp" android:textStyle="bold" />
                         </LinearLayout>
                     </com.google.android.material.card.MaterialCardView>
 
                     <com.google.android.material.card.MaterialCardView
-                        android:id="@+id/ishaTime"
                         android:layout_width="0dp"
                         android:layout_height="76dp"
                         android:layout_marginStart="4dp"
@@ -390,7 +385,7 @@
                         <LinearLayout android:layout_width="match_parent" android:layout_height="match_parent" android:gravity="center" android:orientation="vertical">
                             <ImageView android:layout_width="18dp" android:layout_height="18dp" android:src="@drawable/ic_bedtime_24" app:tint="@color/muted_text" android:contentDescription="@null" />
                             <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginTop="2dp" android:text="Isha" android:textColor="@color/text_dark" android:textSize="11sp" />
-                            <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="20:00" android:textColor="@color/text_dark" android:textSize="14sp" android:textStyle="bold" />
+                            <TextView android:id="@+id/ishaTime" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="20:00" android:textColor="@color/text_dark" android:textSize="14sp" android:textStyle="bold" />
                         </LinearLayout>
                     </com.google.android.material.card.MaterialCardView>
 
