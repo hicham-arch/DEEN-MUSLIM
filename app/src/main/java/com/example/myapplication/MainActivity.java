@@ -61,6 +61,55 @@ public class MainActivity extends AppCompatActivity {
         // Start loading prayer times
         loadPrayerTimes();
     }
+    
+    private void showLocationDialog() {
+    String[] options = {"Use GPS", "Enter City manually"};
+    new MaterialAlertDialogBuilder(this)
+            .setTitle("Change Location")
+            .setItems(options, (dialog, which) -> {
+                if (which == 0) {
+                    prefs.setUseGps(true);
+                    requestLocationAndFetch();
+                } else {
+                    showCityInputDialog();
+                }
+            })
+            .setNegativeButton("Cancel", null)
+            .show();
+}
+
+private void showCityInputDialog() {
+    android.widget.LinearLayout layout = new android.widget.LinearLayout(this);
+    layout.setOrientation(android.widget.LinearLayout.VERTICAL);
+    layout.setPadding(48, 24, 48, 8);
+
+    final android.widget.EditText cityInput = new android.widget.EditText(this);
+    cityInput.setHint("City");
+    cityInput.setText(prefs.getCity());
+    layout.addView(cityInput);
+
+    final android.widget.EditText countryInput = new android.widget.EditText(this);
+    countryInput.setHint("Country");
+    countryInput.setText(prefs.getCountry());
+    layout.addView(countryInput);
+
+    new MaterialAlertDialogBuilder(this)
+            .setTitle("Enter Location")
+            .setView(layout)
+            .setPositiveButton("Save", (d, w) -> {
+                String city = cityInput.getText().toString().trim();
+                String country = countryInput.getText().toString().trim();
+                if (!city.isEmpty() && !country.isEmpty()) {
+                    prefs.setCity(city);
+                    prefs.setCountry(country);
+                    prefs.setUseGps(false);
+                    fetchByCity();
+                    Toast.makeText(this, "Location updated", Toast.LENGTH_SHORT).show();
+                }
+            })
+            .setNegativeButton("Cancel", null)
+            .show();
+}
 
     private void bindViews() {
         prayerLocation   = findViewById(R.id.prayerLocation);
@@ -73,6 +122,10 @@ public class MainActivity extends AppCompatActivity {
         asrTime     = findViewById(R.id.asrTime);
         maghribTime = findViewById(R.id.maghribTime);
         ishaTime    = findViewById(R.id.ishaTime);
+        
+        if (prayerLocation != null) {
+    prayerLocation.setOnClickListener(v -> showLocationDialog());
+}
     }
 
     private void loadPrayerTimes() {
