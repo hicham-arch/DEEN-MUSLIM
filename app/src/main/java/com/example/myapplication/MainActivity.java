@@ -31,6 +31,7 @@ import java.util.Locale;
 import java.util.concurrent.TimeUnit;
 import java.time.LocalDate;
 import java.time.ZoneId;
+import java.time.ZonedDateTime;
 import java.time.DateTimeException;
 
 public class MainActivity extends AppCompatActivity {
@@ -579,6 +580,10 @@ private void showAppearanceDialog() {
                 return;
             }
 
+            // The offline fallback lambda must refer to an effectively final
+            // zone, while prayerZoneId remains the current mutable state.
+            final ZoneId offlineZone = zone;
+
             // Avoid repeated or stale requests if the GPS fix changed meanwhile.
             prayerZoneId = zone;
             prayerLatitude = lat;
@@ -602,7 +607,7 @@ private void showAppearanceDialog() {
                     runOnUiThread(() -> {
                         if (requestVersion != uiRequestVersion) return;
                         Toast.makeText(MainActivity.this, "GPS failed, using offline calculation.", Toast.LENGTH_SHORT).show();
-                        calculatePrayerTimesOffline(lat, lng, zone.getId());
+                        calculatePrayerTimesOffline(lat, lng, offlineZone.getId());
                     });
                 }
             });
