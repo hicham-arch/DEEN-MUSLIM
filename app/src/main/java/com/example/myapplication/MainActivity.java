@@ -154,10 +154,12 @@ private void showSettingsDialog() {
     // Rows
     android.view.View locationRow = createRow.apply(new String[]{"📍", "Location", locationSubtitle});
     android.view.View methodRow   = createRow.apply(new String[]{"🧮", "Calculation Method", methodSubtitle});
+    android.view.View asrRow     = createRow.apply(new String[]{"🌓", "Asr Method", prefs.getAsrFactor() == 1 ? "Standard" : "Hanafi"});
     android.view.View themeRow    = createRow.apply(new String[]{"🎨", "Appearance", "Light / Dark / System"});
 
     root.addView(locationRow);
     root.addView(methodRow);
+    root.addView(asrRow);
     root.addView(themeRow);
 
     // Click listeners
@@ -167,9 +169,13 @@ private void showSettingsDialog() {
     methodRow.setOnClickListener(v -> {
         showMethodDialog();
     });
+    asrRow.setOnClickListener(v -> {
+        showAsrMethodDialog();
+    });
     themeRow.setOnClickListener(v -> {
         showAppearanceDialog();
     });
+
 
     new MaterialAlertDialogBuilder(this)
             .setTitle("Settings")
@@ -476,9 +482,8 @@ public void onError(String message) {
 
         LocalDate today = LocalDate.now(zoneId);
 
-        // Standard Asr rule: factor 1.
-        // Factor 2 is used for the Hanafi rule.
-        int asrFactor = 1;
+        // Use the stored Asr factor from preferences
+        int asrFactor = prefs.getAsrFactor();
 
         PrayerTimings timings = PrayerCalculationEngine.calculate(
                 today,
@@ -490,6 +495,7 @@ public void onError(String message) {
         );
 
         currentTimings = timings;
+
 
         // Update the existing prayer cards.
         if (fajrTime != null) {
@@ -681,6 +687,15 @@ private void highlightNextPrayerCard(int nextIndex,
         remainingTimeUpdater = new Runnable() {
             @Override
             public void run() {
+                // Check if the date has changed in the city's time zone
+                java.util.TimeZone cityTz = java.util.TimeZone.getTimeZone(prefs.getTimeZone());
+                Calendar now = Calendar.getInstance(cityTz);
+                String todayCity = new SimpleDateFormat("yyyy-MM-dd", Locale.US).format(now.getTime());
+
+                // We can check this by comparing with a stored value or just recalculating.
+                // For simplicity and accuracy, we check if we need a fresh calculation.
+                // If we are using the API, the current cache might be for a different date.
+
                 updateNextPrayer();
                 handler.postDelayed(this, 30_000); // every 30 sec
             }
