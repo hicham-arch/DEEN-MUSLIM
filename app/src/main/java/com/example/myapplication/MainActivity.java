@@ -245,6 +245,10 @@ private void showLocationDialog() {
 }
 
 private void showCityInputDialog() {
+    // Opening the manual city picker immediately invalidates outstanding GPS work.
+    uiRequestVersion++;
+    cancelActiveLocationRequest();
+
     CityPickerDialog.show(this, prefs.getCity(), selected -> {
 
         // A manual selection cancels any pending GPS/time-zone work.
@@ -408,6 +412,22 @@ private void showAppearanceDialog() {
         }
     }
 
+
+    private void cancelOwnedLocationRequest(LocationListener listener, Runnable fallback) {
+        if (listener == activeLocationListener && activeLocationManager != null) {
+            try {
+                activeLocationManager.removeUpdates(listener);
+            } catch (Exception ignored) {
+            }
+            activeLocationManager = null;
+            activeLocationListener = null;
+        }
+        if (fallback != null && pendingGpsFallback == fallback) {
+            handler.removeCallbacks(fallback);
+            pendingGpsFallback = null;
+        }
+    }
+
     private void loadPrayerTimes() {
         uiRequestVersion++;
         if (prefs.isUseGps()) {
@@ -440,7 +460,6 @@ private void showAppearanceDialog() {
             return;
         }
 
-        // Cancel any previous GPS request before replacing it.
         cancelActiveLocationRequest();
 
         final int requestVersion = uiRequestVersion;
@@ -460,19 +479,18 @@ private void showAppearanceDialog() {
                 return;
             }
 
-            LocationListener listener = new LocationListener() {
+            final LocationListener listener = new LocationListener() {
                 @Override
                 public void onLocationChanged(@NonNull Location location) {
                     if (requestVersion != uiRequestVersion) {
-                        // Stale location callback: ignore it and remove its listener.
-                        cancelActiveLocationRequest();
+                        cancelOwnedLocationRequest(listener, pendingGpsFallback);
                         return;
                     }
-                    if (pendingGpsFallback != null) {
-                        handler.removeCallbacks(pendingGpsFallback);
-                        pendingGpsFallback = null;
+                    final Runnable fallback = pendingGpsFallback;
+                    cancelOwnedLocationRequest(listener, fallback);
+                    if (requestVersion != uiRequestVersion) {
+                        return;
                     }
-                    cancelActiveLocationRequest();
                     prefs.saveLastLocation(location.getLatitude(), location.getLongitude());
                     fetchByLocation(location.getLatitude(), location.getLongitude());
                 }
@@ -483,14 +501,14 @@ private void showAppearanceDialog() {
                 @Override
                 public void onProviderDisabled(@NonNull String provider) {
                     if (requestVersion != uiRequestVersion) {
-                        cancelActiveLocationRequest();
+                        cancelOwnedLocationRequest(listener, pendingGpsFallback);
                         return;
                     }
-                    if (pendingGpsFallback != null) {
-                        handler.removeCallbacks(pendingGpsFallback);
-                        pendingGpsFallback = null;
+                    final Runnable fallback = pendingGpsFallback;
+                    cancelOwnedLocationRequest(listener, fallback);
+                    if (requestVersion != uiRequestVersion) {
+                        return;
                     }
-                    cancelActiveLocationRequest();
                     fetchByCity();
                 }
             };
@@ -499,15 +517,21 @@ private void showAppearanceDialog() {
             activeLocationListener = listener;
             lm.requestSingleUpdate(LocationManager.NETWORK_PROVIDER, listener, Looper.getMainLooper());
 
-            pendingGpsFallback = () -> {
-                pendingGpsFallback = null;
-                if (requestVersion != uiRequestVersion) {
-                    cancelActiveLocationRequest();
+            final Runnable[] fallbackHolder = new Runnable[1];
+            fallbackHolder[0] = () -> {
+                final Runnable self = fallbackHolder[0];
+                if (pendingGpsFallback != self) {
                     return;
                 }
-                cancelActiveLocationRequest();
+                if (requestVersion != uiRequestVersion) {
+                    cancelOwnedLocationRequest(activeLocationListener, self);
+                    return;
+                }
+                cancelOwnedLocationRequest(activeLocationListener, self);
+                uiRequestVersion++;
                 fetchByCity();
             };
+            pendingGpsFallback = fallbackHolder[0];
             handler.postDelayed(pendingGpsFallback, 8000);
         } catch (SecurityException e) {
             cancelActiveLocationRequest();
