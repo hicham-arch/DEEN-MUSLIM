@@ -51,6 +51,7 @@ public class MainActivity extends AppCompatActivity {
     private double prayerLatitude = Double.NaN;
     private double prayerLongitude = Double.NaN;
     private LocalDate prayerDate = LocalDate.now(ZoneId.systemDefault());
+    private int timeZoneRequestVersion = 0;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -448,42 +449,55 @@ private void showAppearanceDialog() {
         // of assuming that the phone's time zone matches the GPS position.
         // This is a best-effort offline approximation, not an authoritative
         // coordinate-to-zone conversion.
-        String resolvedZoneId = CityPickerDialog.findNearestTimeZone(this, lat, lng);
-        ZoneId zone;
-        try {
-            zone = (resolvedZoneId == null) ? null : ZoneId.of(resolvedZoneId);
-        } catch (DateTimeException | NullPointerException e) {
-            zone = null;
-        }
-        if (zone == null) {
-            runOnUiThread(() -> Toast.makeText(MainActivity.this,
-                    "GPS time zone could not be determined offline. " +
-                            "Please choose your city and time zone manually.",
-                    Toast.LENGTH_LONG).show());
-            return;
-        }
-
-        prayerZoneId = zone;
-        prayerLatitude = lat;
-        prayerLongitude = lng;
-        prefs.saveLastLocation(lat, lng);
-        prefs.setTimeZone(zone.getId());
-
-        String date = LocalDate.now(zone).format(java.time.format.DateTimeFormatter.ofPattern("dd-MM-yyyy"));
-        int method = prefs.getMethod();
-
-        PrayerTimesApi.getTimingsByLocation(lat, lng, method, date, new PrayerTimesApi.Callback() {
-            @Override
-            public void onSuccess(PrayerResponse response) {
-                runOnUiThread(() -> updateUI(response));
+        final int requestVersion = ++timeZoneRequestVersion;
+        CityPickerDialog.resolveNearestTimeZone(this, lat, lng, resolvedZoneId -> {
+            if (isFinishing() || isDestroyed() || requestVersion != timeZoneRequestVersion) {
+                return;
             }
-            @Override
-            public void onError(String message) {
-                runOnUiThread(() -> {
-                    Toast.makeText(MainActivity.this, "GPS failed, using offline calculation.", Toast.LENGTH_SHORT).show();
-                    calculatePrayerTimesOffline(lat, lng, zone.getId());
-                });
+            ZoneId zone = null;
+            try {
+                if (resolvedZoneId != null && !resolvedZoneId.trim().isEmpty()) {
+                    zone = ZoneId.of(resolvedZoneId.trim());
+                }
+            } catch (DateTimeException | NullPointerException e) {
+                zone = null;
             }
+
+            if (zone == null) {
+                Toast.makeText(MainActivity.this,
+                        "GPS time zone could not be determined offline. " +
+                                "Please choose your city and time zone manually.",
+                        Toast.LENGTH_LONG).show();
+                return;
+            }
+
+            // Avoid repeated or stale requests if the GPS fix changed meanwhile.
+            prayerZoneId = zone;
+            prayerLatitude = lat;
+            prayerLongitude = lng;
+            prefs.saveLastLocation(lat, lng);
+            prefs.setTimeZone(zone.getId());
+
+            String date = LocalDate.now(zone).format(java.time.format.DateTimeFormatter.ofPattern("dd-MM-yyyy"));
+            int method = prefs.getMethod();
+            PrayerTimesApi.getTimingsByLocation(lat, lng, method, date, new PrayerTimesApi.Callback() {
+                @Override
+                public void onSuccess(PrayerResponse response) {
+                    runOnUiThread(() -> {
+                        if (requestVersion != timeZoneRequestVersion) return;
+                        updateUI(response);
+                    });
+                }
+
+                @Override
+                public void onError(String message) {
+                    runOnUiThread(() -> {
+                        if (requestVersion != timeZoneRequestVersion) return;
+                        Toast.makeText(MainActivity.this, "GPS failed, using offline calculation.", Toast.LENGTH_SHORT).show();
+                        calculatePrayerTimesOffline(lat, lng, zone.getId());
+                    });
+                }
+            });
         });
     }
 

@@ -43,6 +43,11 @@ public final class CityPickerDialog {
 
     private CityPickerDialog() {}
 
+    public interface TimeZoneResolutionCallback {
+        void onResolved(String timeZoneId);
+    }
+
+
     /**
      * Best-effort offline time-zone resolution for a GPS position.
      *
@@ -51,7 +56,7 @@ public final class CityPickerDialog {
      * is a practical fallback only. The caller must still tell the user when an
      * accurate zone could not be determined and allow manual selection.
      */
-    public static String findNearestTimeZone(Context context, double latitude, double longitude) {
+    private static String findNearestTimeZoneSync(Context context, double latitude, double longitude) {
         SQLiteDatabase db = null;
         Cursor cursor = null;
         try {
@@ -67,7 +72,15 @@ public final class CityPickerDialog {
                             String.valueOf(longitude), String.valueOf(longitude)
                     });
             if (cursor != null && cursor.moveToFirst()) {
-                return cursor.getString(0);
+                String value = cursor.getString(0);
+                if (value != null && !value.trim().isEmpty()) {
+                    try {
+                        java.time.ZoneId.of(value.trim());
+                        return value.trim();
+                    } catch (Exception ignored) {
+                        return null;
+                    }
+                }
             }
         } catch (Exception e) {
             return null;
@@ -77,6 +90,31 @@ public final class CityPickerDialog {
         }
         return null;
     }
+
+    /**
+     * Resolve a best-effort time zone without blocking the calling thread.
+     *
+     * The database lookup runs on the shared database executor. The result is
+     * delivered on the main thread. Callers must guard against destroyed
+     * activities and duplicate requests.
+     */
+    public static void resolveNearestTimeZone(Context context, double latitude, double longitude,
+                                             TimeZoneResolutionCallback callback) {
+        final Context appContext = (context == null) ? null : context.getApplicationContext();
+        DB_EXECUTOR.execute(() -> {
+            String resolved = null;
+            if (appContext != null) {
+                resolved = findNearestTimeZoneSync(appContext, latitude, longitude);
+            }
+            final String result = resolved;
+            MAIN.post(() -> {
+                if (callback != null) {
+                    callback.onResolved(result);
+                }
+            });
+        });
+    }
+
 
     public interface SelectionListener {
         void onCitySelected(City city);

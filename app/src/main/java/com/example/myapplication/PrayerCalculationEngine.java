@@ -163,17 +163,44 @@ public final class PrayerCalculationEngine {
             }
         }
 
-        // Sanity bounds, only meaningful when the underlying values are finite.
-        if (Double.isFinite(sunrise) && Double.isFinite(sunset) && Double.isFinite(fajr)) {
-            if (fajr < 0 || fajr > sunrise) {
-                fajr = sunrise - ((24.0 - sunset) + sunrise) / 7.0;
+        // Sanity handling must respect the selected high-latitude rule.
+        if (highLatitudeRule == HIGH_LATITUDE_ONE_SEVENTH
+                && Double.isFinite(sunrise) && Double.isFinite(sunset)) {
+            if (Double.isFinite(fajr) && (fajr < 0 || fajr > sunrise)) {
+                fajr = sunrise - night / 7.0;
+            }
+            if (Double.isFinite(isha) && (isha < sunset || isha > 24)) {
+                isha = sunset + night / 7.0;
+            }
+        } else if (highLatitudeRule == HIGH_LATITUDE_MIDDLE_OF_NIGHT
+                && Double.isFinite(sunrise) && Double.isFinite(sunset)) {
+            if (Double.isFinite(fajr) && (fajr < 0 || fajr > sunrise)) {
+                fajr = sunrise - night / 2.0;
+            }
+            if (Double.isFinite(isha) && (isha < sunset || isha > 24)) {
+                isha = sunset + night / 2.0;
+            }
+        } else {
+            // For NONE or unsupported angle-based, do not fabricate a replacement.
+            if (!(highLatitudeRule == HIGH_LATITUDE_ONE_SEVENTH
+                    || highLatitudeRule == HIGH_LATITUDE_MIDDLE_OF_NIGHT)) {
+                if (Double.isFinite(fajr) && (fajr < 0 || fajr > sunrise)) {
+                    fajr = Double.NaN;
+                }
+                if (Double.isFinite(isha) && (isha < sunset || isha > 24)) {
+                    isha = Double.NaN;
+                }
             }
         }
-        if (Double.isFinite(sunrise) && Double.isFinite(sunset) && Double.isFinite(isha)) {
-            if (isha < sunset || isha > 24) {
-                isha = sunset + ((24.0 - sunset) + sunrise) / 7.0;
-            }
-        }
+
+        // Prevent formatted output from turning an unavailable/negative result
+        // into a plausible-looking wall-clock time.
+        if (Double.isFinite(fajr) && (fajr < 0.0 || fajr >= 24.0)) fajr = Double.NaN;
+        if (Double.isFinite(isha) && (isha < 0.0 || isha >= 24.0)) isha = Double.NaN;
+        if (Double.isFinite(sunrise) && (sunrise < 0.0 || sunrise >= 24.0)) sunrise = Double.NaN;
+        if (Double.isFinite(sunset) && (sunset < 0.0 || sunset >= 24.0)) sunset = Double.NaN;
+        if (Double.isFinite(asr) && (asr < 0.0 || asr >= 24.0)) asr = Double.NaN;
+        if (Double.isFinite(solarNoon) && (solarNoon < 0.0 || solarNoon >= 24.0)) solarNoon = Double.NaN;
 
         // High-latitude/polar cases may leave values non-finite: leave them
         // non-finite so callers render "--:--" instead of plausible junk.

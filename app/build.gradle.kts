@@ -40,6 +40,7 @@ android {
 }
 
 dependencies {
+    testImplementation("junit:junit:4.13.2")
 
 
     implementation("androidx.constraintlayout:constraintlayout:2.2.1")
