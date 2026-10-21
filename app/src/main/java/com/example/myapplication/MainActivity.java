@@ -766,7 +766,7 @@ private void showAppearanceDialog() {
 
         // Location text
         if (prefs.isUseGps()) {
-            resolveLocationName(prefs.getLastLat(), prefs.getLastLng());
+            resolveLocationName(prefs.getLastLat(), prefs.getLastLng(), requestVersion);
         } else {
             if (prayerLocation != null) {
                 prayerLocation.setText(prefs.getCity() + ", " + prefs.getCountry());
@@ -951,7 +951,8 @@ private void highlightNextPrayerCard(int nextIndex,
         }
     }
     
-    private void resolveLocationName(double lat, double lng) {
+    private void resolveLocationName(double lat, double lng, int requestVersion) {
+    final int geocoderRequestVersion = requestVersion;
     new Thread(() -> {
         try {
             android.location.Geocoder geocoder = new android.location.Geocoder(this, Locale.getDefault());
@@ -978,12 +979,20 @@ private void highlightNextPrayerCard(int nextIndex,
 
             String finalName = displayName;
             runOnUiThread(() -> {
+                if (isFinishing() || isDestroyed()
+                        || geocoderRequestVersion != uiRequestVersion) {
+                    return;
+                }
                 if (prayerLocation != null) {
                     prayerLocation.setText(finalName);
                 }
             });
         } catch (Exception e) {
             runOnUiThread(() -> {
+                if (isFinishing() || isDestroyed()
+                        || geocoderRequestVersion != uiRequestVersion) {
+                    return;
+                }
                 if (prayerLocation != null) {
                     prayerLocation.setText(String.format(Locale.US, "%.2f, %.2f", lat, lng));
                 }
