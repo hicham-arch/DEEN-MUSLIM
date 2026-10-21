@@ -428,6 +428,61 @@ private void showAppearanceDialog() {
         }
     }
 
+    private final class OwnedGpsRequest implements LocationListener, Runnable {
+        final LocationManager manager;
+        final int version;
+
+        OwnedGpsRequest(LocationManager manager, int version) {
+            this.manager = manager;
+            this.version = version;
+        }
+
+        @Override
+        public void onLocationChanged(@NonNull Location location) {
+            if (version != uiRequestVersion) {
+                cancelOwnedLocationRequest(this, this);
+                return;
+            }
+            cancelOwnedLocationRequest(this, this);
+            if (version != uiRequestVersion) {
+                return;
+            }
+            prefs.saveLastLocation(location.getLatitude(), location.getLongitude());
+            fetchByLocation(location.getLatitude(), location.getLongitude());
+        }
+
+        @Override
+        public void onProviderEnabled(@NonNull String provider) {}
+
+        @Override
+        public void onProviderDisabled(@NonNull String provider) {
+            if (version != uiRequestVersion) {
+                cancelOwnedLocationRequest(this, this);
+                return;
+            }
+            cancelOwnedLocationRequest(this, this);
+            if (version != uiRequestVersion) {
+                return;
+            }
+            fetchByCity();
+        }
+
+        @Override
+        public void run() {
+            // Only this request's own timeout callback may proceed.
+            if (pendingGpsFallback != this) {
+                return;
+            }
+            if (version != uiRequestVersion) {
+                cancelOwnedLocationRequest(this, this);
+                return;
+            }
+            cancelOwnedLocationRequest(this, this);
+            uiRequestVersion++;
+            fetchByCity();
+        }
+    }
+
     private void loadPrayerTimes() {
         uiRequestVersion++;
         if (prefs.isUseGps()) {
@@ -479,60 +534,18 @@ private void showAppearanceDialog() {
                 return;
             }
 
-            final LocationListener listener = new LocationListener() {
-                @Override
-                public void onLocationChanged(@NonNull Location location) {
-                    if (requestVersion != uiRequestVersion) {
-                        cancelOwnedLocationRequest(listener, pendingGpsFallback);
-                        return;
-                    }
-                    final Runnable fallback = pendingGpsFallback;
-                    cancelOwnedLocationRequest(listener, fallback);
-                    if (requestVersion != uiRequestVersion) {
-                        return;
-                    }
-                    prefs.saveLastLocation(location.getLatitude(), location.getLongitude());
-                    fetchByLocation(location.getLatitude(), location.getLongitude());
-                }
-
-                @Override
-                public void onProviderEnabled(@NonNull String provider) {}
-
-                @Override
-                public void onProviderDisabled(@NonNull String provider) {
-                    if (requestVersion != uiRequestVersion) {
-                        cancelOwnedLocationRequest(listener, pendingGpsFallback);
-                        return;
-                    }
-                    final Runnable fallback = pendingGpsFallback;
-                    cancelOwnedLocationRequest(listener, fallback);
-                    if (requestVersion != uiRequestVersion) {
-                        return;
-                    }
-                    fetchByCity();
-                }
-            };
+            // Each GPS request owns a single listener/fallback pair. The listener
+            // and fallback are the same object, so stale callbacks can only ever
+            // name the exact resources created for this request. Shared fields are
+            // the current resources and must be compared before clearing them.
+            final OwnedGpsRequest gpsRequest = new OwnedGpsRequest(lm, requestVersion);
 
             activeLocationManager = lm;
-            activeLocationListener = listener;
-            lm.requestSingleUpdate(LocationManager.NETWORK_PROVIDER, listener, Looper.getMainLooper());
-
-            final Runnable[] fallbackHolder = new Runnable[1];
-            fallbackHolder[0] = () -> {
-                final Runnable self = fallbackHolder[0];
-                if (pendingGpsFallback != self) {
-                    return;
-                }
-                if (requestVersion != uiRequestVersion) {
-                    cancelOwnedLocationRequest(activeLocationListener, self);
-                    return;
-                }
-                cancelOwnedLocationRequest(activeLocationListener, self);
-                uiRequestVersion++;
-                fetchByCity();
-            };
-            pendingGpsFallback = fallbackHolder[0];
-            handler.postDelayed(pendingGpsFallback, 8000);
+            activeLocationListener = gpsRequest;
+            pendingGpsFallback = gpsRequest;
+            lm.requestSingleUpdate(LocationManager.NETWORK_PROVIDER, gpsRequest,
+                    Looper.getMainLooper());
+            handler.postDelayed(gpsRequest, 8000);
         } catch (SecurityException e) {
             cancelActiveLocationRequest();
             fetchByCity();
@@ -990,6 +1003,7 @@ private void highlightNextPrayerCard(int nextIndex,
     protected void onDestroy() {
         super.onDestroy();
         if (remainingTimeUpdater != null) handler.removeCallbacks(remainingTimeUpdater);
+        cancelActiveLocationRequest();
         if (pendingGpsFallback != null) handler.removeCallbacks(pendingGpsFallback);
         pendingGpsFallback = null;
     }
