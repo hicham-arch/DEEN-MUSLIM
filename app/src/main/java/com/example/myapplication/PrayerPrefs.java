@@ -26,6 +26,9 @@ public class PrayerPrefs {
     private static final String KEY_CACHE_MAGHRIB = "cached_prayer_maghrib";
     private static final String KEY_CACHE_ISHA = "cached_prayer_isha";
     private static final String KEY_TIMEZONE = "location_timezone";
+    private static final String KEY_CACHE_TIMEZONE = "cached_prayer_timezone";
+    private static final String KEY_CACHE_LAT = "cached_prayer_lat";
+    private static final String KEY_CACHE_LNG = "cached_prayer_lng";
 
     private final SharedPreferences prefs;
 
@@ -104,7 +107,8 @@ public String getTimeZone() {
 }
 
     /** Save today's timings for the currently selected manual city. */
-    public void saveCachedTimings(PrayerTimings timings, String city, String country, String date, int method, String timezone, int asrFactor) {
+    public void saveCachedTimings(PrayerTimings timings, String city, String country, String date, int method,
+                                 String timezone, int asrFactor, double latitude, double longitude) {
         if (timings == null) return;
         prefs.edit()
                 .putString(KEY_CACHE_CITY, city)
@@ -113,6 +117,8 @@ public String getTimeZone() {
                 .putInt(KEY_CACHE_METHOD, method)
                 .putString(KEY_CACHE_TIMEZONE, timezone)
                 .putInt("cached_prayer_asr_factor", asrFactor)
+                .putString(KEY_CACHE_LAT, String.valueOf(latitude))
+                .putString(KEY_CACHE_LNG, String.valueOf(longitude))
                 .putString(KEY_CACHE_FAJR, timings.Fajr)
                 .putString(KEY_CACHE_SUNRISE, timings.Sunrise)
                 .putString(KEY_CACHE_DHUHR, timings.Dhuhr)
@@ -127,13 +133,16 @@ public String getTimeZone() {
      * Returns cached timings only for the same city/country and local date.
      * Yesterday's timings are deliberately not shown as today's prayer schedule.
      */
-    public PrayerTimings getCachedTimings(String city, String country, String date, int method, String timezone, int asrFactor) {
+    public PrayerTimings getCachedTimings(String city, String country, String date, int method, String timezone,
+                                         int asrFactor, double latitude, double longitude) {
         if (!city.equals(prefs.getString(KEY_CACHE_CITY, ""))
                 || !country.equals(prefs.getString(KEY_CACHE_COUNTRY, ""))
                 || !date.equals(prefs.getString(KEY_CACHE_DATE, ""))
                 || method != prefs.getInt(KEY_CACHE_METHOD, -1)
                 || !timezone.equals(prefs.getString(KEY_CACHE_TIMEZONE, ""))
-                || asrFactor != prefs.getInt("cached_prayer_asr_factor", -1)) {
+                || asrFactor != prefs.getInt("cached_prayer_asr_factor", -1)
+                || Math.abs(latitude - Double.parseDouble(prefs.getString(KEY_CACHE_LAT, "0"))) > 1e-9
+                || Math.abs(longitude - Double.parseDouble(prefs.getString(KEY_CACHE_LNG, "0"))) > 1e-9) {
             return null;
         }
         String fajr = prefs.getString(KEY_CACHE_FAJR, null);

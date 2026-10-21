@@ -47,6 +47,10 @@ public class MainActivity extends AppCompatActivity {
     private final Handler handler = new Handler(Looper.getMainLooper());
     private Runnable remainingTimeUpdater;
     private PrayerTimings currentTimings;
+    private ZoneId prayerZoneId = ZoneId.systemDefault();
+    private double prayerLatitude = Double.NaN;
+    private double prayerLongitude = Double.NaN;
+    private LocalDate prayerDate = LocalDate.now(ZoneId.systemDefault());
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -303,6 +307,26 @@ private void showMethodDialog() {
 }
 
 // -----------------------------------------------------
+// ASR METHOD
+// -----------------------------------------------------
+
+private void showAsrMethodDialog() {
+    String[] options = {"Standard (Shafi'i/Maliki/Hanbali)", "Hanafi"};
+    int current = prefs.getAsrFactor() == 2 ? 1 : 0;
+    new MaterialAlertDialogBuilder(this)
+            .setTitle("Asr Method")
+            .setSingleChoiceItems(options, current, (dialog, which) -> {
+                prefs.setAsrFactor(which == 1 ? 2 : 1);
+                Toast.makeText(this, "Asr method updated", Toast.LENGTH_SHORT).show();
+                dialog.dismiss();
+                loadPrayerTimes();
+            })
+            .setNegativeButton("Cancel", null)
+            .show();
+}
+
+
+// -----------------------------------------------------
 // APPEARANCE (already existed, keep it)
 // -----------------------------------------------------
 
@@ -420,7 +444,17 @@ private void showAppearanceDialog() {
     }
 
     private void fetchByLocation(double lat, double lng) {
-        String date = new SimpleDateFormat("dd-MM-yyyy", Locale.US).format(new Date());
+        // GPS strategy: the device time zone is the appropriate initial zone for a
+        // locally determined position.  It is not silently used for a manually
+        // selected city.
+        ZoneId zone = ZoneId.systemDefault();
+        prayerZoneId = zone;
+        prayerLatitude = lat;
+        prayerLongitude = lng;
+        prefs.saveLastLocation(lat, lng);
+        prefs.setTimeZone(zone.getId());
+
+        String date = LocalDate.now(zone).format(java.time.format.DateTimeFormatter.ofPattern("dd-MM-yyyy"));
         int method = prefs.getMethod();
 
         PrayerTimesApi.getTimingsByLocation(lat, lng, method, date, new PrayerTimesApi.Callback() {
@@ -431,8 +465,8 @@ private void showAppearanceDialog() {
             @Override
             public void onError(String message) {
                 runOnUiThread(() -> {
-                    Toast.makeText(MainActivity.this, "GPS failed, using city…", Toast.LENGTH_SHORT).show();
-                    fetchByCity();
+                    Toast.makeText(MainActivity.this, "GPS failed, using offline calculation.", Toast.LENGTH_SHORT).show();
+                    calculatePrayerTimesOffline(lat, lng, zone.getId());
                 });
             }
         });
@@ -441,7 +475,21 @@ private void showAppearanceDialog() {
     private void fetchByCity() {
         String city = prefs.getCity();
         String country = prefs.getCountry();
-        String date = new SimpleDateFormat("dd-MM-yyyy", Locale.US).format(new Date());
+
+        // Use the city's own zone; never silently fall back to the device zone.
+        ZoneId zone;
+        try {
+            zone = ZoneId.of(prefs.getTimeZone());
+        } catch (DateTimeException | NullPointerException e) {
+            runOnUiThread(() -> Toast.makeText(MainActivity.this,
+                    "Invalid saved time zone; please re-select your city.", Toast.LENGTH_LONG).show());
+            return;
+        }
+        prayerZoneId = zone;
+        prayerLatitude = prefs.getLastLat();
+        prayerLongitude = prefs.getLastLng();
+
+        String date = LocalDate.now(zone).format(java.time.format.DateTimeFormatter.ofPattern("dd-MM-yyyy"));
         int method = prefs.getMethod();
 
         PrayerTimesApi.getTimingsByCity(city, country, method, date, new PrayerTimesApi.Callback() {
@@ -450,101 +498,93 @@ private void showAppearanceDialog() {
                 runOnUiThread(() -> updateUI(response));
             }
             @Override
-public void onError(String message) {
-    runOnUiThread(() -> {
-
-        // Use the selected city's saved coordinates.
-        calculatePrayerTimesOffline(
-                prefs.getLastLat(),
-                prefs.getLastLng(),
-                prefs.getTimeZone()
-        );
-
-    });
-
-}
+            public void onError(String message) {
+                runOnUiThread(() -> calculatePrayerTimesOffline(
+                        prefs.getLastLat(),
+                        prefs.getLastLng(),
+                        prefs.getTimeZone()
+                ));
+            }
         });
     }
     
     private void calculatePrayerTimesOffline(
-        double latitude,
-        double longitude,
-        String timeZoneId) {
+            double latitude,
+            double longitude,
+            String timeZoneId) {
 
-    try {
         ZoneId zoneId;
-
         try {
             zoneId = ZoneId.of(timeZoneId);
         } catch (DateTimeException | NullPointerException e) {
-            zoneId = ZoneId.systemDefault();
+            Toast.makeText(this, "Invalid time zone for the selected location. Prayer times not calculated.",
+                    Toast.LENGTH_LONG).show();
+            return;
         }
 
-        LocalDate today = LocalDate.now(zoneId);
+        prayerZoneId = zoneId;
+        prayerLatitude = latitude;
+        prayerLongitude = longitude;
 
-        // Use the stored Asr factor from preferences
+        LocalDate today = LocalDate.now(zoneId);
+        prayerDate = today;
+
         int asrFactor = prefs.getAsrFactor();
 
-        PrayerTimings timings = PrayerCalculationEngine.calculate(
-                today,
-                latitude,
-                longitude,
-                zoneId,
-                prefs.getMethod(),
-                asrFactor
-        );
+        PrayerTimings timings;
+        try {
+            timings = PrayerCalculationEngine.calculate(
+                    today,
+                    latitude,
+                    longitude,
+                    zoneId,
+                    prefs.getMethod(),
+                    asrFactor
+            );
+        } catch (IllegalArgumentException ex) {
+            Toast.makeText(this, "Could not calculate prayer times offline.", Toast.LENGTH_LONG).show();
+            return;
+        }
 
         currentTimings = timings;
 
-
-        // Update the existing prayer cards.
-        if (fajrTime != null) {
-            fajrTime.setText(cleanTime(timings.Fajr));
-        }
-
-        if (dhuhrTime != null) {
-            dhuhrTime.setText(cleanTime(timings.Dhuhr));
-        }
-
-        if (asrTime != null) {
-            asrTime.setText(cleanTime(timings.Asr));
-        }
-
-        if (maghribTime != null) {
-            maghribTime.setText(cleanTime(timings.Maghrib));
-        }
-
-        if (ishaTime != null) {
-            ishaTime.setText(cleanTime(timings.Isha));
-        }
+        if (fajrTime != null) fajrTime.setText(cleanTime(timings.Fajr));
+        if (dhuhrTime != null) dhuhrTime.setText(cleanTime(timings.Dhuhr));
+        if (asrTime != null) asrTime.setText(cleanTime(timings.Asr));
+        if (maghribTime != null) maghribTime.setText(cleanTime(timings.Maghrib));
+        if (ishaTime != null) ishaTime.setText(cleanTime(timings.Isha));
 
         if (prayerLocation != null) {
-            String location = prefs.getCity() + ", "
-                    + prefs.getCountry();
-
-            prayerLocation.setText(location + " · Offline");
+            String base = prefs.isUseGps()
+                    ? (String.format(Locale.US, "%.2f, %.2f", latitude, longitude))
+                    : (prefs.getCity() + ", " + prefs.getCountry());
+            prayerLocation.setText(base + " \u00b7 Offline");
         }
 
         updateNextPrayer();
         startRemainingTimeTicker();
-
-    } catch (Exception e) {
-        Toast.makeText(
-                this,
-                "Could not calculate prayer times offline.",
-                Toast.LENGTH_LONG
-        ).show();
     }
-}
-    
+
     private boolean showCachedPrayerTimes() {
-    String today = new SimpleDateFormat("yyyy-MM-dd", Locale.US).format(new Date());
-    PrayerTimings cached = prefs.getCachedTimings(prefs.getCity(), prefs.getCountry(), today, prefs.getMethod());
+    ZoneId zone;
+    try {
+        zone = ZoneId.of(prefs.getTimeZone());
+    } catch (Exception e) {
+        return false;
+    }
+    prayerZoneId = zone;
+    prayerLatitude = prefs.getLastLat();
+    prayerLongitude = prefs.getLastLng();
+    String today = LocalDate.now(zone).toString();
+    PrayerTimings cached = prefs.getCachedTimings(
+            prefs.getCity(), prefs.getCountry(), today, prefs.getMethod(),
+            prefs.getTimeZone(), prefs.getAsrFactor(), prayerLatitude, prayerLongitude);
     if (cached == null) return false;
 
     currentTimings = cached;
+    prayerDate = LocalDate.parse(today);
     if (prayerLocation != null) {
-        prayerLocation.setText(prefs.getCity() + ", " + prefs.getCountry() + " · Cached");
+        prayerLocation.setText(prefs.getCity() + ", " + prefs.getCountry() + " \u00b7 Cached");
     }
     if (fajrTime != null) fajrTime.setText(cleanTime(currentTimings.Fajr));
     if (dhuhrTime != null) dhuhrTime.setText(cleanTime(currentTimings.Dhuhr));
@@ -562,21 +602,23 @@ public void onError(String message) {
         if (response == null || response.data == null || response.data.timings == null) return;
 
         currentTimings = response.data.timings;
-        
+        prayerDate = LocalDate.now(prayerZoneId);
+
         if (!prefs.isUseGps()) {
-    String today = new SimpleDateFormat("yyyy-MM-dd", Locale.US).format(new Date());
-    prefs.saveCachedTimings(currentTimings, prefs.getCity(), prefs.getCountry(), today, prefs.getMethod());
-}
+            String today = prayerDate.toString();
+            prefs.saveCachedTimings(currentTimings, prefs.getCity(), prefs.getCountry(),
+                    today, prefs.getMethod(), prayerZoneId.getId(), prefs.getAsrFactor(),
+                    prayerLatitude, prayerLongitude);
+        }
 
-    // Location text
-
-    if (prefs.isUseGps()) {
-      resolveLocationName(prefs.getLastLat(), prefs.getLastLng());
-    } else {
-      if (prayerLocation != null) {
-        prayerLocation.setText(prefs.getCity() + ", " + prefs.getCountry());
-      }
-    }
+        // Location text
+        if (prefs.isUseGps()) {
+            resolveLocationName(prefs.getLastLat(), prefs.getLastLng());
+        } else {
+            if (prayerLocation != null) {
+                prayerLocation.setText(prefs.getCity() + ", " + prefs.getCountry());
+            }
+        }
 
         // Fill prayer list
         if (fajrTime != null)    fajrTime.setText(cleanTime(currentTimings.Fajr));
@@ -612,36 +654,75 @@ private void updateNextPrayer() {
             fajrCard, dhuhrCard, asrCard, maghribCard, ishaCard
     };
 
-    Calendar now = Calendar.getInstance();
-    int nowMinutes = now.get(Calendar.HOUR_OF_DAY) * 60 + now.get(Calendar.MINUTE);
+    if (prayerZoneId == null) prayerZoneId = ZoneId.systemDefault();
+    if (prayerDate == null) prayerDate = LocalDate.now(prayerZoneId);
+    ZonedDateTime now = ZonedDateTime.now(prayerZoneId);
 
     String nextName = names[0];
     String nextTime = times[0];
-    int nextMinutes = parseMinutes(times[0]) + 24 * 60; // tomorrow Fajr as fallback
     int nextIndex = 0;
+    ZonedDateTime nextInstant = prayerInstant(prayerDate, times[0]);
 
-    for (int i = 0; i < times.length; i++) {
-        int t = parseMinutes(times[i]);
-        if (t > nowMinutes) {
-            nextName = names[i];
-            nextTime = times[i];
-            nextMinutes = t;
-            nextIndex = i;
+    for (int idx = 0; idx < times.length; idx++) {
+        ZonedDateTime inst = prayerInstant(prayerDate, times[idx]);
+        if (inst != null && inst.isAfter(now)) {
+            nextName = names[idx];
+            nextTime = times[idx];
+            nextIndex = idx;
+            nextInstant = inst;
             break;
         }
     }
 
-    // Update big hero section
+    // If every today prayer has passed, the next prayer is tomorrow's Fajr.
+    if (nextInstant == null || !nextInstant.isAfter(now)) {
+        // Calculate tomorrow's Fajr when coordinates/time zone are available.
+        String tomorrowFajr = null;
+        LocalDate tomorrow = prayerDate.plusDays(1);
+        if (Double.isFinite(prayerLatitude) && Double.isFinite(prayerLongitude)) {
+            try {
+                PrayerTimings tomorrowTimings = PrayerCalculationEngine.calculate(
+                        tomorrow, prayerLatitude, prayerLongitude, prayerZoneId,
+                        prefs.getMethod(), prefs.getAsrFactor());
+                tomorrowFajr = cleanTime(tomorrowTimings.Fajr);
+            } catch (Exception ignored) { }
+        }
+        if (tomorrowFajr == null || tomorrowFajr.equals("--:--")) {
+            tomorrowFajr = times[0];
+        }
+        ZonedDateTime inst = prayerInstant(tomorrow, tomorrowFajr);
+        if (inst != null) {
+            nextInstant = inst;
+            nextName = "Fajr";
+            nextTime = tomorrowFajr;
+            nextIndex = 0;
+        }
+    }
+
     if (currentPrayerName != null) currentPrayerName.setText(nextName);
     if (currentPrayerTime != null) currentPrayerTime.setText(nextTime);
 
-    // Remaining time
-    int remaining = nextMinutes - nowMinutes;
-    if (remaining < 0) remaining += 24 * 60;
-    updateRemainingText(remaining);
+    long remainingMinutes = 0;
+    if (nextInstant != null) {
+        remainingMinutes = java.time.Duration.between(now, nextInstant).toMinutes();
+        if (remainingMinutes < 0) remainingMinutes = 0;
+    }
+    updateRemainingText((int) Math.max(0, remainingMinutes));
 
-    // ===== Highlight the next prayer card =====
     highlightNextPrayerCard(nextIndex, cards);
+}
+
+private ZonedDateTime prayerInstant(LocalDate date, String hhmm) {
+    if (date == null || hhmm == null || hhmm.equals("--:--")) return null;
+    try {
+        String[] parts = hhmm.split(":");
+        int hour = Integer.parseInt(parts[0]);
+        int minute = Integer.parseInt(parts[1]);
+        if (hour < 0 || hour > 23 || minute < 0 || minute > 59) return null;
+        return date.atTime(hour, minute).atZone(prayerZoneId);
+    } catch (Exception e) {
+        return null;
+    }
 }
 
 private void highlightNextPrayerCard(int nextIndex,
@@ -687,14 +768,14 @@ private void highlightNextPrayerCard(int nextIndex,
         remainingTimeUpdater = new Runnable() {
             @Override
             public void run() {
-                // Check if the date has changed in the city's time zone
-                java.util.TimeZone cityTz = java.util.TimeZone.getTimeZone(prefs.getTimeZone());
-                Calendar now = Calendar.getInstance(cityTz);
-                String todayCity = new SimpleDateFormat("yyyy-MM-dd", Locale.US).format(now.getTime());
-
-                // We can check this by comparing with a stored value or just recalculating.
-                // For simplicity and accuracy, we check if we need a fresh calculation.
-                // If we are using the API, the current cache might be for a different date.
+                if (prayerZoneId == null) prayerZoneId = ZoneId.systemDefault();
+                LocalDate todayCity = LocalDate.now(prayerZoneId);
+                if (prayerDate == null || !todayCity.equals(prayerDate)) {
+                    // The selected city moved to a new local day: recalculate schedule.
+                    prayerDate = todayCity;
+                    loadPrayerTimes();
+                    return;
+                }
 
                 updateNextPrayer();
                 handler.postDelayed(this, 30_000); // every 30 sec
@@ -781,8 +862,10 @@ private void highlightNextPrayerCard(int nextIndex,
     private void updatePrayerDate() {
         TextView prayerDate = findViewById(R.id.prayerDate);
         if (prayerDate != null) {
+            ZoneId zone = (prayerZoneId == null) ? ZoneId.systemDefault() : prayerZoneId;
             SimpleDateFormat formatter = new SimpleDateFormat("d MMM yyyy", Locale.getDefault());
-            prayerDate.setText(formatter.format(new Date()));
+            formatter.setTimeZone(java.util.TimeZone.getTimeZone(zone.getId()));
+            prayerDate.setText(formatter.format(new java.util.Date()));
         }
     }
 

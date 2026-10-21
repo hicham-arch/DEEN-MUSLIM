@@ -8,11 +8,23 @@ import java.util.Locale;
 
 /**
  * High-precision offline solar prayer-time calculator.
- * Implements higher-order trigonometric series for solar position and
- * incorporates atmospheric refraction and robust high-latitude rules.
+ *
+ * Implements the usual solar-position series and provides explicit high-latitude
+ * fallbacks.  Calculations are performed for the supplied {@link LocalDate} in
+ * the supplied {@link ZoneId}; time-zone conversion is the caller's
+ * responsibility.
  */
 public final class PrayerCalculationEngine {
     private PrayerCalculationEngine() {}
+
+    /** No adjustment when the sun does not reach a required altitude. */
+    public static final int HIGH_LATITUDE_NONE = 0;
+    /** Fajr/Isha are placed half-way through the night. */
+    public static final int HIGH_LATITUDE_MIDDLE_OF_NIGHT = 1;
+    /** Fajr/Isha are one seventh of the night from sunrise/sunset. */
+    public static final int HIGH_LATITUDE_ONE_SEVENTH = 2;
+    /** Angle-based adjustment; currently falls back to one-seventh when needed. */
+    public static final int HIGH_LATITUDE_ANGLE_BASED = 3;
 
     private static final double RAD = Math.PI / 180.0;
     private static final double DEG = 180.0 / Math.PI;
@@ -22,86 +34,144 @@ public final class PrayerCalculationEngine {
         double ishaAngle;
         double ishaMinutes;
         int asrFactor = 1;
-        double maghribAngle = 0.833; // Standard refraction adjusted altitude
+        double maghribAngle = 0.833; // standard refraction-adjusted sunrise/sunset altitude
         Params(double f, double i) { fajrAngle = f; ishaAngle = i; }
     }
 
+    /**
+     * Mapping of the calculation-method IDs used by the UI and preferences to the
+     * angles/parameters used here.  IDs are intentionally kept stable because
+     * existing preferences may already contain saved IDs.
+     */
     private static Params paramsFor(int method) {
         switch (method) {
-            case 1: return new Params(18.0, 18.0);
-            case 2: return new Params(15.0, 15.0);
-            case 3: return new Params(18.0, 17.0);
-            case 4: { Params p = new Params(18.5, 0); p.ishaMinutes = 90; return p; }
-            case 5: return new Params(19.5, 17.5);
-            case 7: return new Params(17.7, 14.0);
-            case 8: { Params p = new Params(19.5, 0); p.ishaMinutes = 90; return p; }
-            case 9: return new Params(18.0, 17.5);
-            case 10: { Params p = new Params(18.0, 0); p.ishaMinutes = 90; return p; }
-            case 11: return new Params(20.0, 18.0);
-            case 12: return new Params(12.0, 12.0);
-            case 13: { Params p = new Params(18.0, 17.0); p.ishaMinutes = 0; return p; }
-            case 14: return new Params(16.0, 15.0);
-            default: return new Params(18.0, 17.0);
+            case 1:  return new Params(18.0, 18.0);                          // Karachi
+            case 2:  return new Params(15.0, 15.0);                          // ISNA
+            case 3:  return new Params(18.0, 17.0);                          // Muslim World League
+            case 4:  { Params p = new Params(18.5, 0); p.ishaMinutes = 90; return p; } // Umm Al-Qura (Isha: +90 min)
+            case 5:  return new Params(19.5, 17.5);                          // Egyptian
+            case 7:  return new Params(17.7, 14.0);                          // Tehran
+            case 8:  { Params p = new Params(19.5, 0); p.ishaMinutes = 90; return p; } // Gulf (Isha: +90 min)
+            case 9:  return new Params(18.0, 17.5);                          // Kuwait
+            case 10: { Params p = new Params(18.0, 0); p.ishaMinutes = 90; return p; } // Qatar (Isha: +90 min)
+            case 11: return new Params(20.0, 18.0);                          // Singapore
+            case 12: return new Params(12.0, 12.0);                          // France
+            case 13: { Params p = new Params(18.0, 17.0); p.ishaMinutes = 0; return p; } // Turkey/Diyanet
+            case 14: return new Params(16.0, 15.0);                          // Russia
+            default: return new Params(18.0, 17.0);                          // fallback close to MWL
         }
     }
 
     public static PrayerTimings calculate(LocalDate date, double latitude, double longitude,
                                           ZoneId zoneId, int method, int asrFactor) {
+        return calculate(date, latitude, longitude, zoneId, method, asrFactor,
+                HIGH_LATITUDE_ONE_SEVENTH);
+    }
+
+    public static PrayerTimings calculate(LocalDate date, double latitude, double longitude,
+                                          ZoneId zoneId, int method, int asrFactor,
+                                          int highLatitudeRule) {
         if (date == null || zoneId == null || !Double.isFinite(latitude) || latitude < -90 || latitude > 90
                 || !Double.isFinite(longitude) || longitude < -180 || longitude > 180) {
             throw new IllegalArgumentException("Valid date, time zone, latitude and longitude are required.");
         }
+
         Params p = paramsFor(method);
+        // The Asr method is independent of the calculation method.
         p.asrFactor = (asrFactor == 2) ? 2 : 1;
 
         // Day of year
         double day = ChronoUnit.DAYS.between(LocalDate.of(date.getYear(), 1, 1), date) + 1;
 
-        // High-precision solar coordinates using higher-order series
+        // Solar coordinates
         double gamma = 2.0 * Math.PI / 365.2422 * (day - 1);
 
-        // Equation of Time (EoT) in minutes
+        // Equation of Time (minutes)
         double eqTime = 229.18 * (0.000075 + 0.001868 * Math.cos(gamma) - 0.032077 * Math.sin(gamma)
                 - 0.014615 * Math.cos(2 * gamma) - 0.040849 * Math.sin(2 * gamma));
 
-        // Solar Declination in radians
+        // Solar declination (radians)
         double decl = (0.006918 - 0.399912 * Math.cos(gamma) + 0.070257 * Math.sin(gamma)
                 - 0.006758 * Math.cos(2 * gamma) + 0.000907 * Math.sin(2 * gamma)
-                - 0.002697 * Math.cos(3 * gamma) + 0.00148 * Math.sin(3 * gamma)) * RAD;
+                - 0.002697 * Math.cos(3 * gamma) + 0.00148 * Math.sin(3 * gamma));
 
         ZonedDateTime noonZdt = date.atTime(12, 0).atZone(zoneId);
         double tz = noonZdt.getOffset().getTotalSeconds() / 3600.0;
 
-        // Solar Noon in hours
+        // Solar noon (hours, local wall-clock of zoneId)
         double solarNoon = 12.0 + tz - longitude / 15.0 - eqTime / 60.0;
 
         // Hour angles
-        double sunriseHourAngle = hourAngle(latitude, decl, p.maghribAngle);
-        double fajrHourAngle = hourAngle(latitude, decl, p.fajrAngle);
-        double ishaHourAngle = (p.ishaMinutes > 0) ? Double.NaN : hourAngle(latitude, decl, p.ishaAngle);
+        double sunriseHourAngle = hourAngleFromAltitude(latitude, decl, -Math.abs(p.maghribAngle));
+        double fajrHourAngle = hourAngleFromAltitude(latitude, decl, -Math.abs(p.fajrAngle));
+        double ishaHourAngle = (p.ishaMinutes > 0) ? Double.NaN
+                : hourAngleFromAltitude(latitude, decl, -Math.abs(p.ishaAngle));
 
-        // Asr calculation: shadow length = factor * tan(latitude - declination)
-        double asrAltitude = -Math.atan(1.0 / (p.asrFactor + Math.tan(Math.abs(latitude * RAD - decl)))) * DEG;
+        // Asr: the sun's altitude when the shadow length equals
+        //   asrFactor (1=Standard/Shafi'i, 2=Hanafi) times the object height
+        //   plus the shadow already present at solar noon.
+        //   tan(altitude) = 1 / (asrFactor + |tan(latitude - declination)|)
+        // The altitude is positive (the sun is above the horizon), so the sign is
+        // positive here.  A negative atan() here would describe a point below the
+        // horizon and is incorrect.
+        double asrAltitude = Math.atan(1.0 / (p.asrFactor + Math.abs(Math.tan(latitude * RAD - decl)))) * DEG;
         double asrHourAngle = hourAngleFromAltitude(latitude, decl, asrAltitude);
 
-        double sunrise = solarNoon - sunriseHourAngle / 15.0;
-        double sunset = solarNoon + sunriseHourAngle / 15.0;
-        double fajr = solarNoon - fajrHourAngle / 15.0;
-        double asr = solarNoon + asrHourAngle / 15.0;
-        double isha = (p.ishaMinutes > 0) ? sunset + p.ishaMinutes / 60.0 : solarNoon + ishaHourAngle / 15.0;
+        double sunrise = Double.isFinite(sunriseHourAngle) ? solarNoon - sunriseHourAngle / 15.0 : Double.NaN;
+        double sunset = Double.isFinite(sunriseHourAngle) ? solarNoon + sunriseHourAngle / 15.0 : Double.NaN;
+        double fajr = Double.isFinite(fajrHourAngle) ? solarNoon - fajrHourAngle / 15.0 : Double.NaN;
+        double asr = Double.isFinite(asrHourAngle) ? solarNoon + asrHourAngle / 15.0 : Double.NaN;
+        double isha = (p.ishaMinutes > 0)
+                ? (Double.isFinite(sunset) ? sunset + p.ishaMinutes / 60.0 : Double.NaN)
+                : (Double.isFinite(ishaHourAngle) ? solarNoon + ishaHourAngle / 15.0 : Double.NaN);
 
-        // --- High-Latitude Adjustment ---
-        // If the sun never reaches the required altitude, use the "Closest-Day" / "Angle-Shifting" approach
-        // fallback to 1/7th night as a last resort but only after trying a shifted angle.
-        if (!Double.isFinite(fajr) || !Double.isFinite(isha)) {
-            double night = (24.0 - sunset) + sunrise;
-            if (!Double.isFinite(fajr)) fajr = sunrise - night / 7.0;
-            if (!Double.isFinite(isha)) isha = sunset + night / 7.0;
+        // --- High-latitude handling ---
+        // Night length used by the fallbacks.  When sunrise or sunset is
+        // unavailable (polar day or polar night) there is no meaningful night
+        // length and we must not synthesise one.
+        double night = Double.NaN;
+        if (Double.isFinite(sunrise) && Double.isFinite(sunset)) {
+            night = (24.0 - sunset) + sunrise;
+            if (!(night > 0.0 && night <= 24.0) || !Double.isFinite(night)) {
+                night = Double.NaN;
+            }
         }
 
-        // Sanity bounds
-        if (fajr < 0 || fajr > sunrise) fajr = sunrise - (24.0 - sunset + sunrise) / 7.0;
-        if (isha < sunset || isha > 24) isha = sunset + (24.0 - sunset + sunrise) / 7.0;
+        boolean needsFallback = !Double.isFinite(fajr) || !Double.isFinite(isha);
+        if (needsFallback && Double.isFinite(night)) {
+            switch (highLatitudeRule) {
+                case HIGH_LATITUDE_MIDDLE_OF_NIGHT:
+                    if (!Double.isFinite(fajr)) fajr = sunrise - night / 2.0;
+                    if (!Double.isFinite(isha)) isha = sunset + night / 2.0;
+                    break;
+                case HIGH_LATITUDE_ANGLE_BASED:
+                    // Angle-based adjustment is not implemented beyond the
+                    // one-seventh rule.  Documented limitation: for locations
+                    // where angle-based adjustment is mandated, use an
+                    // implementation that supports it; we deliberately do not
+                    // fabricate values here.
+                case HIGH_LATITUDE_ONE_SEVENTH:
+                default:
+                    if (!Double.isFinite(fajr)) fajr = sunrise - night / 7.0;
+                    if (!Double.isFinite(isha)) isha = sunset + night / 7.0;
+                    break;
+            }
+        }
+
+        // Sanity bounds, only meaningful when the underlying values are finite.
+        if (Double.isFinite(sunrise) && Double.isFinite(sunset) && Double.isFinite(fajr)) {
+            if (fajr < 0 || fajr > sunrise) {
+                fajr = sunrise - ((24.0 - sunset) + sunrise) / 7.0;
+            }
+        }
+        if (Double.isFinite(sunrise) && Double.isFinite(sunset) && Double.isFinite(isha)) {
+            if (isha < sunset || isha > 24) {
+                isha = sunset + ((24.0 - sunset) + sunrise) / 7.0;
+            }
+        }
+
+        // High-latitude/polar cases may leave values non-finite: leave them
+        // non-finite so callers render "--:--" instead of plausible junk.
 
         PrayerTimings t = new PrayerTimings();
         t.Fajr = format(fajr);
@@ -110,20 +180,25 @@ public final class PrayerCalculationEngine {
         t.Asr = format(asr);
         t.Maghrib = format(sunset);
         t.Isha = format(isha);
-        t.Imsak = format(fajr - 10.0 / 60.0);
-        t.Midnight = format((sunset + (fajr + 24.0)) / 2.0);
+        t.Imsak = Double.isFinite(fajr) ? format(fajr - 10.0 / 60.0) : "--:--";
+        t.Midnight = (Double.isFinite(sunset) && Double.isFinite(fajr))
+                ? format((sunset + (fajr + 24.0)) / 2.0) : "--:--";
         return t;
-    }
-
-    private static double hourAngle(double lat, double decl, double angle) {
-        return hourAngleFromAltitude(lat, decl, -Math.abs(angle));
     }
 
     private static double hourAngleFromAltitude(double lat, double decl, double altitude) {
         double phi = lat * RAD;
+        // decl is currently radians; convert consistently.
+        double declRad = decl;
+        // decl parameter passed may already be radians (from calculation). Keep as-is.
         double h = altitude * RAD;
-        double cosH = (Math.sin(h) - Math.sin(phi) * Math.sin(decl)) / (Math.cos(phi) * Math.cos(decl));
-        if (cosH < -1 || cosH > 1 || !Double.isFinite(cosH)) return Double.NaN;
+        double cosPhi = Math.cos(phi);
+        double cosDecl = Math.cos(declRad);
+        if (Math.abs(cosPhi) < 1e-12 || Math.abs(cosDecl) < 1e-12) {
+            return Double.NaN;
+        }
+        double cosH = (Math.sin(h) - Math.sin(phi) * Math.sin(declRad)) / (cosPhi * cosDecl);
+        if (cosH < -1.0 || cosH > 1.0 || !Double.isFinite(cosH)) return Double.NaN;
         return Math.acos(cosH) * DEG;
     }
 
