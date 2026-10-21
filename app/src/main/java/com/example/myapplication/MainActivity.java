@@ -51,9 +51,10 @@ public class MainActivity extends AppCompatActivity {
     private double prayerLatitude = Double.NaN;
     private double prayerLongitude = Double.NaN;
     private LocalDate prayerDate = LocalDate.now(ZoneId.systemDefault());
-    private int timeZoneRequestVersion = 0;
     private int uiRequestVersion = 0;
     private Runnable pendingGpsFallback;
+    private LocationManager activeLocationManager;
+    private LocationListener activeLocationListener;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -230,11 +231,12 @@ private void showLocationDialog() {
             .setItems(options, (dialog, which) -> {
                 if (which == 0) {
                     uiRequestVersion++;
-                    timeZoneRequestVersion++;
+                    cancelActiveLocationRequest();
                     prefs.setUseGps(true);
                     Toast.makeText(this, "Switching to GPS…", Toast.LENGTH_SHORT).show();
                     requestLocationAndFetch();
                 } else {
+                    cancelActiveLocationRequest();
                     showCityInputDialog();
                 }
             })
@@ -247,7 +249,7 @@ private void showCityInputDialog() {
 
         // A manual selection cancels any pending GPS/time-zone work.
         uiRequestVersion++;
-        timeZoneRequestVersion++;
+        cancelActiveLocationRequest();
 
         prefs.setCity(selected.name);
         prefs.setCountry(selected.countryName);
@@ -390,9 +392,24 @@ private void showAppearanceDialog() {
 }
     }
 
+    private void cancelActiveLocationRequest() {
+        if (activeLocationManager != null && activeLocationListener != null) {
+            try {
+                activeLocationManager.removeUpdates(activeLocationListener);
+            } catch (Exception ignored) {
+                // Ignoring exceptions keeps permission teardown from crashing.
+            }
+        }
+        activeLocationManager = null;
+        activeLocationListener = null;
+        if (pendingGpsFallback != null) {
+            handler.removeCallbacks(pendingGpsFallback);
+            pendingGpsFallback = null;
+        }
+    }
+
     private void loadPrayerTimes() {
         uiRequestVersion++;
-        timeZoneRequestVersion++;
         if (prefs.isUseGps()) {
             requestLocationAndFetch();
         } else {
@@ -423,6 +440,10 @@ private void showAppearanceDialog() {
             return;
         }
 
+        // Cancel any previous GPS request before replacing it.
+        cancelActiveLocationRequest();
+
+        final int requestVersion = uiRequestVersion;
         try {
             Location last = null;
             if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION)
@@ -436,36 +457,60 @@ private void showAppearanceDialog() {
             if (last != null) {
                 prefs.saveLastLocation(last.getLatitude(), last.getLongitude());
                 fetchByLocation(last.getLatitude(), last.getLongitude());
-            } else {
-                // Request a single update
-                lm.requestSingleUpdate(LocationManager.NETWORK_PROVIDER, new LocationListener() {
-                    @Override
-                    public void onLocationChanged(@NonNull Location location) {
-                        if (pendingGpsFallback != null) {
-                            handler.removeCallbacks(pendingGpsFallback);
-                            pendingGpsFallback = null;
-                        }
-                        prefs.saveLastLocation(location.getLatitude(), location.getLongitude());
-                        fetchByLocation(location.getLatitude(), location.getLongitude());
-                    }
-                    @Override public void onProviderEnabled(@NonNull String provider) {}
-                    @Override public void onProviderDisabled(@NonNull String provider) {
-                        if (pendingGpsFallback != null) {
-                            handler.removeCallbacks(pendingGpsFallback);
-                            pendingGpsFallback = null;
-                        }
-                        fetchByCity();
-                    }
-                }, Looper.getMainLooper());
-
-                // Fallback after 8 seconds
-                pendingGpsFallback = () -> {
-                    pendingGpsFallback = null;
-                    fetchByCity();
-                };
-                handler.postDelayed(pendingGpsFallback, 8000);
+                return;
             }
+
+            LocationListener listener = new LocationListener() {
+                @Override
+                public void onLocationChanged(@NonNull Location location) {
+                    if (requestVersion != uiRequestVersion) {
+                        // Stale location callback: ignore it and remove its listener.
+                        cancelActiveLocationRequest();
+                        return;
+                    }
+                    if (pendingGpsFallback != null) {
+                        handler.removeCallbacks(pendingGpsFallback);
+                        pendingGpsFallback = null;
+                    }
+                    cancelActiveLocationRequest();
+                    prefs.saveLastLocation(location.getLatitude(), location.getLongitude());
+                    fetchByLocation(location.getLatitude(), location.getLongitude());
+                }
+
+                @Override
+                public void onProviderEnabled(@NonNull String provider) {}
+
+                @Override
+                public void onProviderDisabled(@NonNull String provider) {
+                    if (requestVersion != uiRequestVersion) {
+                        cancelActiveLocationRequest();
+                        return;
+                    }
+                    if (pendingGpsFallback != null) {
+                        handler.removeCallbacks(pendingGpsFallback);
+                        pendingGpsFallback = null;
+                    }
+                    cancelActiveLocationRequest();
+                    fetchByCity();
+                }
+            };
+
+            activeLocationManager = lm;
+            activeLocationListener = listener;
+            lm.requestSingleUpdate(LocationManager.NETWORK_PROVIDER, listener, Looper.getMainLooper());
+
+            pendingGpsFallback = () -> {
+                pendingGpsFallback = null;
+                if (requestVersion != uiRequestVersion) {
+                    cancelActiveLocationRequest();
+                    return;
+                }
+                cancelActiveLocationRequest();
+                fetchByCity();
+            };
+            handler.postDelayed(pendingGpsFallback, 8000);
         } catch (SecurityException e) {
+            cancelActiveLocationRequest();
             fetchByCity();
         }
     }
@@ -475,9 +520,9 @@ private void showAppearanceDialog() {
         // of assuming that the phone's time zone matches the GPS position.
         // This is a best-effort offline approximation, not an authoritative
         // coordinate-to-zone conversion.
-        final int requestVersion = ++timeZoneRequestVersion;
+        final int requestVersion = ++uiRequestVersion;
         CityPickerDialog.resolveNearestTimeZone(this, lat, lng, resolvedZoneId -> {
-            if (isFinishing() || isDestroyed() || requestVersion != timeZoneRequestVersion) {
+            if (isFinishing() || isDestroyed() || requestVersion != uiRequestVersion) {
                 return;
             }
             ZoneId zone = null;
@@ -510,7 +555,7 @@ private void showAppearanceDialog() {
                 @Override
                 public void onSuccess(PrayerResponse response) {
                     runOnUiThread(() -> {
-                        if (requestVersion != timeZoneRequestVersion) return;
+                        if (requestVersion != uiRequestVersion) return;
                         updateUI(response, requestVersion);
                     });
                 }
@@ -518,7 +563,7 @@ private void showAppearanceDialog() {
                 @Override
                 public void onError(String message) {
                     runOnUiThread(() -> {
-                        if (requestVersion != timeZoneRequestVersion) return;
+                        if (requestVersion != uiRequestVersion) return;
                         Toast.makeText(MainActivity.this, "GPS failed, using offline calculation.", Toast.LENGTH_SHORT).show();
                         calculatePrayerTimesOffline(lat, lng, zone.getId());
                     });

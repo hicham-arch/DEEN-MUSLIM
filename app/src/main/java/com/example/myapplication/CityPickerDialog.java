@@ -59,6 +59,10 @@ public final class CityPickerDialog {
     private static String findNearestTimeZoneSync(Context context, double latitude, double longitude) {
         SQLiteDatabase db = null;
         Cursor cursor = null;
+        if (!Double.isFinite(latitude) || latitude < -90.0 || latitude > 90.0
+                || !Double.isFinite(longitude) || longitude < -180.0 || longitude > 180.0) {
+            return null;
+        }
         try {
             File file = CityDatabaseHelper.copyDatabaseIfNeeded(context);
             db = SQLiteDatabase.openDatabase(file.getAbsolutePath(), null,
@@ -90,6 +94,8 @@ public final class CityPickerDialog {
                 double a = Math.sin(deltaLat / 2.0) * Math.sin(deltaLat / 2.0)
                         + Math.cos(cityLatRad) * Math.cos(targetLat)
                         * Math.sin(deltaLon / 2.0) * Math.sin(deltaLon / 2.0);
+                if (a < 0.0) a = 0.0;
+                if (a > 1.0) a = 1.0;
                 double centralAngle = 2.0 * Math.atan2(Math.sqrt(a), Math.sqrt(1.0 - a));
                 if (centralAngle < bestDistance) {
                     bestDistance = centralAngle;
