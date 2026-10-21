@@ -39,6 +39,7 @@ public class MainActivity extends AppCompatActivity {
     private PrayerPrefs prefs;
     private TextView prayerLocation, currentPrayerTime, currentPrayerName, remainingTime;
     private TextView fajrTime, dhuhrTime, asrTime, maghribTime, ishaTime;
+    private com.google.android.material.card.MaterialCardView fajrCard, dhuhrCard, asrCard, maghribCard, ishaCard;
 
     private final Handler handler = new Handler(Looper.getMainLooper());
     private Runnable remainingTimeUpdater;
@@ -56,19 +57,151 @@ public class MainActivity extends AppCompatActivity {
         updatePrayerDate();
         setupFeatureGrid();
 
-        findViewById(R.id.appearanceButton).setOnClickListener(v -> showAppearanceDialog());
+        //findViewById(R.id.appearanceButton).setOnClickListener(v -> showAppearanceDialog());
+        findViewById(R.id.appearanceButton).setOnClickListener(v -> showSettingsDialog());
 
         // Start loading prayer times
         loadPrayerTimes();
     }
     
-    private void showLocationDialog() {
-    String[] options = {"Use GPS", "Enter City manually"};
+    // =====================================================
+// SETTINGS DIALOG
+// =====================================================
+
+private void showSettingsDialog() {
+    // Custom layout for professional look
+    android.widget.LinearLayout root = new android.widget.LinearLayout(this);
+    root.setOrientation(android.widget.LinearLayout.VERTICAL);
+    int pad = (int) (20 * getResources().getDisplayMetrics().density);
+    root.setPadding(pad, pad, pad, pad / 2);
+
+    // Helper to create each row
+    java.util.function.Function<String[], android.view.View> createRow = (data) -> {
+        android.widget.LinearLayout row = new android.widget.LinearLayout(this);
+        row.setOrientation(android.widget.LinearLayout.HORIZONTAL);
+        row.setGravity(android.view.Gravity.CENTER_VERTICAL);
+        row.setPadding(0, pad / 2, 0, pad / 2);
+        row.setClickable(true);
+        row.setFocusable(true);
+
+        // Icon circle
+        android.widget.TextView icon = new android.widget.TextView(this);
+        icon.setText(data[0]);
+        icon.setTextSize(20);
+        icon.setGravity(android.view.Gravity.CENTER);
+        android.widget.LinearLayout.LayoutParams iconLp =
+                new android.widget.LinearLayout.LayoutParams(
+                        (int) (42 * getResources().getDisplayMetrics().density),
+                        (int) (42 * getResources().getDisplayMetrics().density));
+        iconLp.setMarginEnd(pad);
+        icon.setLayoutParams(iconLp);
+        row.addView(icon);
+
+        // Title + subtitle
+        android.widget.LinearLayout textCol = new android.widget.LinearLayout(this);
+        textCol.setOrientation(android.widget.LinearLayout.VERTICAL);
+        textCol.setLayoutParams(new android.widget.LinearLayout.LayoutParams(
+                0, android.widget.LinearLayout.LayoutParams.WRAP_CONTENT, 1f));
+
+        android.widget.TextView title = new android.widget.TextView(this);
+        title.setText(data[1]);
+        title.setTextSize(16);
+        title.setTypeface(null, android.graphics.Typeface.BOLD);
+        title.setTextColor(getResources().getColor(android.R.color.white));
+        textCol.addView(title);
+
+        android.widget.TextView subtitle = new android.widget.TextView(this);
+        subtitle.setText(data[2]);
+        subtitle.setTextSize(13);
+        subtitle.setTextColor(0xFFAAAAAA);
+        textCol.addView(subtitle);
+
+        row.addView(textCol);
+
+        // Arrow
+        android.widget.TextView arrow = new android.widget.TextView(this);
+        arrow.setText("›");
+        arrow.setTextSize(22);
+        arrow.setTextColor(0xFF888888);
+        row.addView(arrow);
+
+        return row;
+    };
+
+    // Current values for subtitles
+    String locationSubtitle = prefs.isUseGps()
+            ? "Using GPS"
+            : prefs.getCity() + ", " + prefs.getCountry();
+
+    String methodSubtitle = getMethodName(prefs.getMethod());
+
+    // Rows
+    android.view.View locationRow = createRow.apply(new String[]{"📍", "Location", locationSubtitle});
+    android.view.View methodRow   = createRow.apply(new String[]{"🧮", "Calculation Method", methodSubtitle});
+    android.view.View themeRow    = createRow.apply(new String[]{"🎨", "Appearance", "Light / Dark / System"});
+
+    root.addView(locationRow);
+    root.addView(methodRow);
+    root.addView(themeRow);
+
+    // Click listeners
+    locationRow.setOnClickListener(v -> {
+        showLocationDialog();
+    });
+    methodRow.setOnClickListener(v -> {
+        showMethodDialog();
+    });
+    themeRow.setOnClickListener(v -> {
+        showAppearanceDialog();
+    });
+
+    new MaterialAlertDialogBuilder(this)
+            .setTitle("Settings")
+            .setView(root)
+            .setNegativeButton("Close", null)
+            .show();
+}
+
+// Helper to show method name
+private String getMethodName(int method) {
+    switch (method) {
+        case 1:  return "Karachi";
+        case 2:  return "ISNA";
+        case 3:  return "Muslim World League";
+        case 4:  return "Umm Al-Qura";
+        case 5:  return "Egyptian";
+        case 7:  return "Tehran";
+        case 8:  return "Gulf Region";
+        case 9:  return "Kuwait";
+        case 10: return "Qatar";
+        case 11: return "Singapore";
+        case 12: return "France";
+        case 13: return "Turkey (Diyanet)";
+        case 14: return "Russia";
+        default: return "ISNA";
+    }
+}
+// -----------------------------------------------------
+// LOCATION
+// -----------------------------------------------------
+
+private void showLocationDialog() {
+    String current = prefs.isUseGps()
+            ? "Currently using GPS"
+            : "Currently: " + prefs.getCity() + ", " + prefs.getCountry();
+
+    String[] options = {
+            "Use GPS (Automatic)",
+            "Enter City manually"
+    };
+
     new MaterialAlertDialogBuilder(this)
             .setTitle("Change Location")
+            .setMessage(current)
             .setItems(options, (dialog, which) -> {
                 if (which == 0) {
                     prefs.setUseGps(true);
+                    Toast.makeText(this, "Switching to GPS…", Toast.LENGTH_SHORT).show();
                     requestLocationAndFetch();
                 } else {
                     showCityInputDialog();
@@ -81,31 +214,114 @@ public class MainActivity extends AppCompatActivity {
 private void showCityInputDialog() {
     android.widget.LinearLayout layout = new android.widget.LinearLayout(this);
     layout.setOrientation(android.widget.LinearLayout.VERTICAL);
-    layout.setPadding(48, 24, 48, 8);
+    int pad = (int) (24 * getResources().getDisplayMetrics().density);
+    layout.setPadding(pad, pad / 2, pad, pad / 2);
 
     final android.widget.EditText cityInput = new android.widget.EditText(this);
-    cityInput.setHint("City");
+    cityInput.setHint("City (e.g. Sylhet)");
     cityInput.setText(prefs.getCity());
     layout.addView(cityInput);
 
     final android.widget.EditText countryInput = new android.widget.EditText(this);
-    countryInput.setHint("Country");
+    countryInput.setHint("Country (e.g. Bangladesh)");
     countryInput.setText(prefs.getCountry());
     layout.addView(countryInput);
 
     new MaterialAlertDialogBuilder(this)
-            .setTitle("Enter Location")
+            .setTitle("Enter City")
             .setView(layout)
             .setPositiveButton("Save", (d, w) -> {
                 String city = cityInput.getText().toString().trim();
                 String country = countryInput.getText().toString().trim();
-                if (!city.isEmpty() && !country.isEmpty()) {
-                    prefs.setCity(city);
-                    prefs.setCountry(country);
-                    prefs.setUseGps(false);
-                    fetchByCity();
-                    Toast.makeText(this, "Location updated", Toast.LENGTH_SHORT).show();
+
+                if (city.isEmpty() || country.isEmpty()) {
+                    Toast.makeText(this, "Please fill both fields", Toast.LENGTH_SHORT).show();
+                    return;
                 }
+
+                prefs.setCity(city);
+                prefs.setCountry(country);
+                prefs.setUseGps(false);
+                Toast.makeText(this, "Location updated", Toast.LENGTH_SHORT).show();
+                fetchByCity();
+            })
+            .setNegativeButton("Cancel", null)
+            .show();
+}
+
+// -----------------------------------------------------
+// CALCULATION METHOD
+// -----------------------------------------------------
+
+private void showMethodDialog() {
+    // Aladhan method IDs
+    final String[] methodNames = {
+            "University of Islamic Sciences, Karachi (1)",
+            "Islamic Society of North America - ISNA (2)",
+            "Muslim World League (3)",
+            "Umm Al-Qura University, Makkah (4)",
+            "Egyptian General Authority of Survey (5)",
+            "Institute of Geophysics, University of Tehran (7)",
+            "Gulf Region (8)",
+            "Kuwait (9)",
+            "Qatar (10)",
+            "Majlis Ugama Islam Singapura (11)",
+            "Union Organization islamic de France (12)",
+            "Diyanet İşleri Başkanlığı, Turkey (13)",
+            "Spiritual Administration of Muslims of Russia (14)"
+    };
+
+    final int[] methodIds = {1, 2, 3, 4, 5, 7, 8, 9, 10, 11, 12, 13, 14};
+
+    int currentMethod = prefs.getMethod();
+    int checkedItem = 1; // default ISNA
+    for (int i = 0; i < methodIds.length; i++) {
+        if (methodIds[i] == currentMethod) {
+            checkedItem = i;
+            break;
+        }
+    }
+
+    new MaterialAlertDialogBuilder(this)
+            .setTitle("Calculation Method")
+            .setSingleChoiceItems(methodNames, checkedItem, (dialog, which) -> {
+                prefs.setMethod(methodIds[which]);
+                Toast.makeText(this, "Method updated", Toast.LENGTH_SHORT).show();
+                dialog.dismiss();
+                // Reload prayer times with new method
+                loadPrayerTimes();
+            })
+            .setNegativeButton("Cancel", null)
+            .show();
+}
+
+// -----------------------------------------------------
+// APPEARANCE (already existed, keep it)
+// -----------------------------------------------------
+
+private void showAppearanceDialog() {
+    String[] themes = {"System default", "Light", "Dark"};
+    int current = getSharedPreferences(PREFERENCES_NAME, MODE_PRIVATE)
+            .getInt(KEY_THEME_MODE, AppCompatDelegate.MODE_NIGHT_FOLLOW_SYSTEM);
+
+    int checked = 0;
+    if (current == AppCompatDelegate.MODE_NIGHT_NO) checked = 1;
+    else if (current == AppCompatDelegate.MODE_NIGHT_YES) checked = 2;
+
+    new MaterialAlertDialogBuilder(this)
+            .setTitle("Appearance")
+            .setSingleChoiceItems(themes, checked, (dialog, which) -> {
+                int mode;
+                switch (which) {
+                    case 1:  mode = AppCompatDelegate.MODE_NIGHT_NO; break;
+                    case 2:  mode = AppCompatDelegate.MODE_NIGHT_YES; break;
+                    default: mode = AppCompatDelegate.MODE_NIGHT_FOLLOW_SYSTEM;
+                }
+                getSharedPreferences(PREFERENCES_NAME, MODE_PRIVATE)
+                        .edit().putInt(KEY_THEME_MODE, mode).apply();
+                AppCompatDelegate.setDefaultNightMode(mode);
+                dialog.dismiss();
+                recreate(); // apply theme immediately
             })
             .setNegativeButton("Cancel", null)
             .show();
@@ -123,6 +339,12 @@ private void showCityInputDialog() {
         maghribTime = findViewById(R.id.maghribTime);
         ishaTime    = findViewById(R.id.ishaTime);
         
+        fajrCard    = findViewById(R.id.fajrCard);
+        dhuhrCard   = findViewById(R.id.dhuhrCard);
+        asrCard     = findViewById(R.id.asrCard);
+        maghribCard = findViewById(R.id.maghribCard);
+        ishaCard    = findViewById(R.id.ishaCard);
+
         if (prayerLocation != null) {
     prayerLocation.setOnClickListener(v -> showLocationDialog());
 }
@@ -233,14 +455,15 @@ private void showCityInputDialog() {
 
         currentTimings = response.data.timings;
 
-        // Location text
-        if (prayerLocation != null) {
-            String loc = prefs.getCity() + ", " + prefs.getCountry();
-            if (response.data.meta != null && prefs.isUseGps()) {
-                loc = String.format(Locale.US, "%.2f, %.2f", response.data.meta.latitude, response.data.meta.longitude);
-            }
-            prayerLocation.setText(loc);
-        }
+    // Location text
+
+    if (prefs.isUseGps()) {
+      resolveLocationName(prefs.getLastLat(), prefs.getLastLng());
+    } else {
+      if (prayerLocation != null) {
+        prayerLocation.setText(prefs.getCity() + ", " + prefs.getCountry());
+      }
+    }
 
         // Fill prayer list
         if (fajrTime != null)    fajrTime.setText(cleanTime(currentTimings.Fajr));
@@ -259,44 +482,75 @@ private void showCityInputDialog() {
         // Remove timezone suffix if present (e.g. "18:36 (BST)")
         return t.split(" ")[0];
     }
+    
+private void updateNextPrayer() {
+    if (currentTimings == null) return;
 
-    private void updateNextPrayer() {
-        if (currentTimings == null) return;
+    String[] names = {"Fajr", "Dhuhr", "Asr", "Maghrib", "Isha"};
+    String[] times = {
+            cleanTime(currentTimings.Fajr),
+            cleanTime(currentTimings.Dhuhr),
+            cleanTime(currentTimings.Asr),
+            cleanTime(currentTimings.Maghrib),
+            cleanTime(currentTimings.Isha)
+    };
 
-        String[] names = {"Fajr", "Dhuhr", "Asr", "Maghrib", "Isha"};
-        String[] times = {
-                cleanTime(currentTimings.Fajr),
-                cleanTime(currentTimings.Dhuhr),
-                cleanTime(currentTimings.Asr),
-                cleanTime(currentTimings.Maghrib),
-                cleanTime(currentTimings.Isha)
-        };
+    com.google.android.material.card.MaterialCardView[] cards = {
+            fajrCard, dhuhrCard, asrCard, maghribCard, ishaCard
+    };
 
-        Calendar now = Calendar.getInstance();
-        int nowMinutes = now.get(Calendar.HOUR_OF_DAY) * 60 + now.get(Calendar.MINUTE);
+    Calendar now = Calendar.getInstance();
+    int nowMinutes = now.get(Calendar.HOUR_OF_DAY) * 60 + now.get(Calendar.MINUTE);
 
-        String nextName = names[0];
-        String nextTime = times[0];
-        int nextMinutes = parseMinutes(times[0]) + 24 * 60; // tomorrow Fajr as fallback
+    String nextName = names[0];
+    String nextTime = times[0];
+    int nextMinutes = parseMinutes(times[0]) + 24 * 60; // tomorrow Fajr as fallback
+    int nextIndex = 0;
 
-        for (int i = 0; i < times.length; i++) {
-            int t = parseMinutes(times[i]);
-            if (t > nowMinutes) {
-                nextName = names[i];
-                nextTime = times[i];
-                nextMinutes = t;
-                break;
-            }
+    for (int i = 0; i < times.length; i++) {
+        int t = parseMinutes(times[i]);
+        if (t > nowMinutes) {
+            nextName = names[i];
+            nextTime = times[i];
+            nextMinutes = t;
+            nextIndex = i;
+            break;
         }
-
-        if (currentPrayerName != null) currentPrayerName.setText(nextName);
-        if (currentPrayerTime != null) currentPrayerTime.setText(nextTime);
-
-        // Remaining
-        int remaining = nextMinutes - nowMinutes;
-        if (remaining < 0) remaining += 24 * 60;
-        updateRemainingText(remaining);
     }
+
+    // Update big hero section
+    if (currentPrayerName != null) currentPrayerName.setText(nextName);
+    if (currentPrayerTime != null) currentPrayerTime.setText(nextTime);
+
+    // Remaining time
+    int remaining = nextMinutes - nowMinutes;
+    if (remaining < 0) remaining += 24 * 60;
+    updateRemainingText(remaining);
+
+    // ===== Highlight the next prayer card =====
+    highlightNextPrayerCard(nextIndex, cards);
+}
+
+private void highlightNextPrayerCard(int nextIndex,
+                                     com.google.android.material.card.MaterialCardView[] cards) {
+
+    int highlightColor = 0xFFD4A017; // gold/yellow
+    int transparent = 0x00000000;
+
+    for (int i = 0; i < cards.length; i++) {
+        if (cards[i] == null) continue;
+
+        if (i == nextIndex) {
+            // Highlight this card
+            cards[i].setStrokeWidth(4);               // 4dp border
+            cards[i].setStrokeColor(highlightColor);
+        } else {
+            // Remove highlight
+            cards[i].setStrokeWidth(0);
+            cards[i].setStrokeColor(transparent);
+        }
+    }
+}
 
     private int parseMinutes(String hhmm) {
         try {
@@ -339,6 +593,47 @@ private void showCityInputDialog() {
             }
         }
     }
+    
+    private void resolveLocationName(double lat, double lng) {
+    new Thread(() -> {
+        try {
+            android.location.Geocoder geocoder = new android.location.Geocoder(this, Locale.getDefault());
+            java.util.List<android.location.Address> addresses = geocoder.getFromLocation(lat, lng, 1);
+
+            String displayName;
+            if (addresses != null && !addresses.isEmpty()) {
+                android.location.Address addr = addresses.get(0);
+                String city = addr.getLocality();
+                if (city == null) city = addr.getSubAdminArea();
+                if (city == null) city = addr.getAdminArea();
+                String country = addr.getCountryName();
+
+                if (city != null && country != null) {
+                    displayName = city + ", " + country;
+                } else if (country != null) {
+                    displayName = country;
+                } else {
+                    displayName = String.format(Locale.US, "%.2f, %.2f", lat, lng);
+                }
+            } else {
+                displayName = String.format(Locale.US, "%.2f, %.2f", lat, lng);
+            }
+
+            String finalName = displayName;
+            runOnUiThread(() -> {
+                if (prayerLocation != null) {
+                    prayerLocation.setText(finalName);
+                }
+            });
+        } catch (Exception e) {
+            runOnUiThread(() -> {
+                if (prayerLocation != null) {
+                    prayerLocation.setText(String.format(Locale.US, "%.2f, %.2f", lat, lng));
+                }
+            });
+        }
+    }).start();
+}
 
     @Override
     protected void onResume() {
@@ -360,35 +655,7 @@ private void showCityInputDialog() {
         AppCompatDelegate.setDefaultNightMode(savedMode);
     }
 
-    private void showAppearanceDialog() {
-        SharedPreferences preferences = getSharedPreferences(PREFERENCES_NAME, MODE_PRIVATE);
-        int currentMode = preferences.getInt(KEY_THEME_MODE, AppCompatDelegate.MODE_NIGHT_FOLLOW_SYSTEM);
-
-        final int[] modes = {
-                AppCompatDelegate.MODE_NIGHT_FOLLOW_SYSTEM,
-                AppCompatDelegate.MODE_NIGHT_NO,
-                AppCompatDelegate.MODE_NIGHT_YES
-        };
-        String[] labels = {"System default", "Light", "Dark"};
-        int selected = 0;
-        for (int i = 0; i < modes.length; i++) {
-            if (modes[i] == currentMode) {
-                selected = i;
-                break;
-            }
-        }
-
-        new MaterialAlertDialogBuilder(this)
-                .setTitle("Appearance")
-                .setSingleChoiceItems(labels, selected, (dialog, which) -> {
-                    preferences.edit().putInt(KEY_THEME_MODE, modes[which]).apply();
-                    AppCompatDelegate.setDefaultNightMode(modes[which]);
-                    dialog.dismiss();
-                })
-                .setNegativeButton("Cancel", null)
-                .show();
-    }
-
+    
     private void updatePrayerDate() {
         TextView prayerDate = findViewById(R.id.prayerDate);
         if (prayerDate != null) {

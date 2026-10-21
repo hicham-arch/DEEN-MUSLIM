@@ -301,6 +301,7 @@
                     android:orientation="horizontal">
 
                     <com.google.android.material.card.MaterialCardView
+                        android:id="@+id/fajrCard"
                         android:layout_width="0dp"
                         android:layout_height="76dp"
                         android:layout_marginEnd="4dp"
@@ -317,6 +318,7 @@
                     </com.google.android.material.card.MaterialCardView>
 
                     <com.google.android.material.card.MaterialCardView
+                        android:id="@+id/dhuhrCard"
                         android:layout_width="0dp"
                         android:layout_height="76dp"
                         android:layout_marginStart="4dp"
@@ -334,6 +336,7 @@
                     </com.google.android.material.card.MaterialCardView>
 
                     <com.google.android.material.card.MaterialCardView
+                        android:id="@+id/asrCard"
                         android:layout_width="0dp"
                         android:layout_height="76dp"
                         android:layout_marginStart="4dp"
@@ -357,6 +360,7 @@
                     android:orientation="horizontal">
 
                     <com.google.android.material.card.MaterialCardView
+                        android:id="@+id/maghribCard"
                         android:layout_width="0dp"
                         android:layout_height="76dp"
                         android:layout_marginEnd="4dp"
@@ -364,8 +368,7 @@
                         app:cardBackgroundColor="@color/prayer_selected"
                         app:cardCornerRadius="15dp"
                         app:cardElevation="0dp"
-                        app:strokeColor="@color/primary_dark"
-                        app:strokeWidth="1dp">
+                        app:strokeWidth="0dp">
                         <LinearLayout android:layout_width="match_parent" android:layout_height="match_parent" android:gravity="center" android:orientation="vertical">
                             <ImageView android:layout_width="18dp" android:layout_height="18dp" android:src="@drawable/ic_bedtime_24" app:tint="@color/primary_dark" android:contentDescription="@null" />
                             <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginTop="2dp" android:text="Maghrib" android:textColor="@color/text_dark" android:textSize="11sp" android:textStyle="bold" />
@@ -374,6 +377,7 @@
                     </com.google.android.material.card.MaterialCardView>
 
                     <com.google.android.material.card.MaterialCardView
+                        android:id="@+id/ishaCard"
                         android:layout_width="0dp"
                         android:layout_height="76dp"
                         android:layout_marginStart="4dp"
