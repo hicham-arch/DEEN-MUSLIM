@@ -23,6 +23,7 @@ public class PrayerPrefs {
     private static final String KEY_CACHE_ASR = "cached_prayer_asr";
     private static final String KEY_CACHE_MAGHRIB = "cached_prayer_maghrib";
     private static final String KEY_CACHE_ISHA = "cached_prayer_isha";
+    private static final String KEY_TIMEZONE = "location_timezone";
 
     private final SharedPreferences prefs;
 
@@ -76,6 +77,20 @@ public class PrayerPrefs {
     public double getLastLng() {
         return Double.parseDouble(prefs.getString(KEY_LNG, "91.8687"));
     }
+    
+
+public void setTimeZone(String timezone) {
+    prefs.edit()
+            .putString(KEY_TIMEZONE, timezone)
+            .apply();
+}
+
+public String getTimeZone() {
+    return prefs.getString(
+            KEY_TIMEZONE,
+            java.util.TimeZone.getDefault().getID()
+    );
+}
 
     /** Save today's timings for the currently selected manual city. */
     public void saveCachedTimings(PrayerTimings timings, String city, String country, String date, int method) {

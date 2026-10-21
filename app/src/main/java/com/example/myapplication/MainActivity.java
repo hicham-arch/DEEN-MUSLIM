@@ -29,6 +29,9 @@ import java.util.Calendar;
 import java.util.Date;
 import java.util.Locale;
 import java.util.concurrent.TimeUnit;
+import java.time.LocalDate;
+import java.time.ZoneId;
+import java.time.DateTimeException;
 
 public class MainActivity extends AppCompatActivity {
 
@@ -226,12 +229,24 @@ private void showLocationDialog() {
 
 private void showCityInputDialog() {
     CityPickerDialog.show(this, prefs.getCity(), selected -> {
+
         prefs.setCity(selected.name);
         prefs.setCountry(selected.countryName);
         prefs.setUseGps(false);
-        Toast.makeText(this, "Location updated: " + selected.name + ", "
-                + selected.countryName, Toast.LENGTH_SHORT).show();
-        fetchByCity();
+
+        // Save the selected city's coordinates.
+        prefs.saveLastLocation(
+                selected.latitude,
+                selected.longitude
+        );
+        prefs.setTimeZone(selected.timezone);
+
+        // Calculate using the selected city's actual time zone.
+        calculatePrayerTimesOffline(
+                selected.latitude,
+                selected.longitude,
+                selected.timezone
+        );
     });
 }
 
@@ -431,14 +446,90 @@ private void showAppearanceDialog() {
             @Override
 public void onError(String message) {
     runOnUiThread(() -> {
-        if (!showCachedPrayerTimes()) {
-            Toast.makeText(MainActivity.this, "Error: " + message,
-                    Toast.LENGTH_LONG).show();
-        }
+
+        // Use the selected city's saved coordinates.
+        calculatePrayerTimesOffline(
+                prefs.getLastLat(),
+                prefs.getLastLng(),
+                prefs.getTimeZone()
+        );
+
     });
+
 }
         });
     }
+    
+    private void calculatePrayerTimesOffline(
+        double latitude,
+        double longitude,
+        String timeZoneId) {
+
+    try {
+        ZoneId zoneId;
+
+        try {
+            zoneId = ZoneId.of(timeZoneId);
+        } catch (DateTimeException | NullPointerException e) {
+            zoneId = ZoneId.systemDefault();
+        }
+
+        LocalDate today = LocalDate.now(zoneId);
+
+        // Standard Asr rule: factor 1.
+        // Factor 2 is used for the Hanafi rule.
+        int asrFactor = 1;
+
+        PrayerTimings timings = PrayerCalculationEngine.calculate(
+                today,
+                latitude,
+                longitude,
+                zoneId,
+                prefs.getMethod(),
+                asrFactor
+        );
+
+        currentTimings = timings;
+
+        // Update the existing prayer cards.
+        if (fajrTime != null) {
+            fajrTime.setText(cleanTime(timings.Fajr));
+        }
+
+        if (dhuhrTime != null) {
+            dhuhrTime.setText(cleanTime(timings.Dhuhr));
+        }
+
+        if (asrTime != null) {
+            asrTime.setText(cleanTime(timings.Asr));
+        }
+
+        if (maghribTime != null) {
+            maghribTime.setText(cleanTime(timings.Maghrib));
+        }
+
+        if (ishaTime != null) {
+            ishaTime.setText(cleanTime(timings.Isha));
+        }
+
+        if (prayerLocation != null) {
+            String location = prefs.getCity() + ", "
+                    + prefs.getCountry();
+
+            prayerLocation.setText(location + " · Offline");
+        }
+
+        updateNextPrayer();
+        startRemainingTimeTicker();
+
+    } catch (Exception e) {
+        Toast.makeText(
+                this,
+                "Could not calculate prayer times offline.",
+                Toast.LENGTH_LONG
+        ).show();
+    }
+}
     
     private boolean showCachedPrayerTimes() {
     String today = new SimpleDateFormat("yyyy-MM-dd", Locale.US).format(new Date());
