@@ -225,41 +225,14 @@ private void showLocationDialog() {
 }
 
 private void showCityInputDialog() {
-    android.widget.LinearLayout layout = new android.widget.LinearLayout(this);
-    layout.setOrientation(android.widget.LinearLayout.VERTICAL);
-    int pad = (int) (24 * getResources().getDisplayMetrics().density);
-    layout.setPadding(pad, pad / 2, pad, pad / 2);
-
-    final android.widget.EditText cityInput = new android.widget.EditText(this);
-    cityInput.setHint("City (e.g. Sylhet)");
-    cityInput.setText(prefs.getCity());
-    layout.addView(cityInput);
-
-    final android.widget.EditText countryInput = new android.widget.EditText(this);
-    countryInput.setHint("Country (e.g. Bangladesh)");
-    countryInput.setText(prefs.getCountry());
-    layout.addView(countryInput);
-
-    new MaterialAlertDialogBuilder(this)
-            .setTitle("Enter City")
-            .setView(layout)
-            .setPositiveButton("Save", (d, w) -> {
-                String city = cityInput.getText().toString().trim();
-                String country = countryInput.getText().toString().trim();
-
-                if (city.isEmpty() || country.isEmpty()) {
-                    Toast.makeText(this, "Please fill both fields", Toast.LENGTH_SHORT).show();
-                    return;
-                }
-
-                prefs.setCity(city);
-                prefs.setCountry(country);
-                prefs.setUseGps(false);
-                Toast.makeText(this, "Location updated", Toast.LENGTH_SHORT).show();
-                fetchByCity();
-            })
-            .setNegativeButton("Cancel", null)
-            .show();
+    CityPickerDialog.show(this, prefs.getCity(), selected -> {
+        prefs.setCity(selected.name);
+        prefs.setCountry(selected.countryName);
+        prefs.setUseGps(false);
+        Toast.makeText(this, "Location updated: " + selected.name + ", "
+                + selected.countryName, Toast.LENGTH_SHORT).show();
+        fetchByCity();
+    });
 }
 
 // -----------------------------------------------------
@@ -456,17 +429,47 @@ private void showAppearanceDialog() {
                 runOnUiThread(() -> updateUI(response));
             }
             @Override
-            public void onError(String message) {
-                runOnUiThread(() ->
-                        Toast.makeText(MainActivity.this, "Error: " + message, Toast.LENGTH_LONG).show());
-            }
+public void onError(String message) {
+    runOnUiThread(() -> {
+        if (!showCachedPrayerTimes()) {
+            Toast.makeText(MainActivity.this, "Error: " + message,
+                    Toast.LENGTH_LONG).show();
+        }
+    });
+}
         });
     }
+    
+    private boolean showCachedPrayerTimes() {
+    String today = new SimpleDateFormat("yyyy-MM-dd", Locale.US).format(new Date());
+    PrayerTimings cached = prefs.getCachedTimings(prefs.getCity(), prefs.getCountry(), today, prefs.getMethod());
+    if (cached == null) return false;
+
+    currentTimings = cached;
+    if (prayerLocation != null) {
+        prayerLocation.setText(prefs.getCity() + ", " + prefs.getCountry() + " · Cached");
+    }
+    if (fajrTime != null) fajrTime.setText(cleanTime(currentTimings.Fajr));
+    if (dhuhrTime != null) dhuhrTime.setText(cleanTime(currentTimings.Dhuhr));
+    if (asrTime != null) asrTime.setText(cleanTime(currentTimings.Asr));
+    if (maghribTime != null) maghribTime.setText(cleanTime(currentTimings.Maghrib));
+    if (ishaTime != null) ishaTime.setText(cleanTime(currentTimings.Isha));
+    updateNextPrayer();
+    startRemainingTimeTicker();
+    Toast.makeText(this, "Offline: showing today's saved prayer times",
+            Toast.LENGTH_SHORT).show();
+    return true;
+}
 
     private void updateUI(PrayerResponse response) {
         if (response == null || response.data == null || response.data.timings == null) return;
 
         currentTimings = response.data.timings;
+        
+        if (!prefs.isUseGps()) {
+    String today = new SimpleDateFormat("yyyy-MM-dd", Locale.US).format(new Date());
+    prefs.saveCachedTimings(currentTimings, prefs.getCity(), prefs.getCountry(), today, prefs.getMethod());
+}
 
     // Location text
 

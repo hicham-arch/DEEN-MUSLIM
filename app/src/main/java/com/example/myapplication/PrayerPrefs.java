@@ -13,6 +13,17 @@ public class PrayerPrefs {
     private static final String KEY_LAT = "lat";
     private static final String KEY_LNG = "lng";
 
+    private static final String KEY_CACHE_CITY = "cached_prayer_city";
+    private static final String KEY_CACHE_COUNTRY = "cached_prayer_country";
+    private static final String KEY_CACHE_DATE = "cached_prayer_date";
+    private static final String KEY_CACHE_METHOD = "cached_prayer_method";
+    private static final String KEY_CACHE_FAJR = "cached_prayer_fajr";
+    private static final String KEY_CACHE_SUNRISE = "cached_prayer_sunrise";
+    private static final String KEY_CACHE_DHUHR = "cached_prayer_dhuhr";
+    private static final String KEY_CACHE_ASR = "cached_prayer_asr";
+    private static final String KEY_CACHE_MAGHRIB = "cached_prayer_maghrib";
+    private static final String KEY_CACHE_ISHA = "cached_prayer_isha";
+
     private final SharedPreferences prefs;
 
     public PrayerPrefs(Context context) {
@@ -64,5 +75,51 @@ public class PrayerPrefs {
 
     public double getLastLng() {
         return Double.parseDouble(prefs.getString(KEY_LNG, "91.8687"));
+    }
+
+    /** Save today's timings for the currently selected manual city. */
+    public void saveCachedTimings(PrayerTimings timings, String city, String country, String date, int method) {
+        if (timings == null) return;
+        prefs.edit()
+                .putString(KEY_CACHE_CITY, city)
+                .putString(KEY_CACHE_COUNTRY, country)
+                .putString(KEY_CACHE_DATE, date)
+                .putInt(KEY_CACHE_METHOD, method)
+                .putString(KEY_CACHE_FAJR, timings.Fajr)
+                .putString(KEY_CACHE_SUNRISE, timings.Sunrise)
+                .putString(KEY_CACHE_DHUHR, timings.Dhuhr)
+                .putString(KEY_CACHE_ASR, timings.Asr)
+                .putString(KEY_CACHE_MAGHRIB, timings.Maghrib)
+                .putString(KEY_CACHE_ISHA, timings.Isha)
+                .apply();
+    }
+
+    /**
+     * Returns cached timings only for the same city/country and local date.
+     * Yesterday's timings are deliberately not shown as today's prayer schedule.
+     */
+    public PrayerTimings getCachedTimings(String city, String country, String date, int method) {
+        if (!city.equals(prefs.getString(KEY_CACHE_CITY, ""))
+                || !country.equals(prefs.getString(KEY_CACHE_COUNTRY, ""))
+                || !date.equals(prefs.getString(KEY_CACHE_DATE, ""))
+                || method != prefs.getInt(KEY_CACHE_METHOD, -1)) {
+            return null;
+        }
+        String fajr = prefs.getString(KEY_CACHE_FAJR, null);
+        String dhuhr = prefs.getString(KEY_CACHE_DHUHR, null);
+        String asr = prefs.getString(KEY_CACHE_ASR, null);
+        String maghrib = prefs.getString(KEY_CACHE_MAGHRIB, null);
+        String isha = prefs.getString(KEY_CACHE_ISHA, null);
+        if (fajr == null || dhuhr == null || asr == null || maghrib == null || isha == null) {
+            return null;
+        }
+        PrayerTimings timings = new PrayerTimings();
+        timings.Fajr = fajr;
+        timings.Sunrise = prefs.getString(KEY_CACHE_SUNRISE, null);
+        timings.Dhuhr = dhuhr;
+        timings.Asr = asr;
+        timings.Maghrib = maghrib;
+        timings.Isha = isha;
+        return timings;
     }
 }
