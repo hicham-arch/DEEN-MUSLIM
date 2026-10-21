@@ -444,10 +444,25 @@ private void showAppearanceDialog() {
     }
 
     private void fetchByLocation(double lat, double lng) {
-        // GPS strategy: the device time zone is the appropriate initial zone for a
-        // locally determined position.  It is not silently used for a manually
-        // selected city.
-        ZoneId zone = ZoneId.systemDefault();
+        // GPS strategy: resolve the zone from the nearest bundled city instead
+        // of assuming that the phone's time zone matches the GPS position.
+        // This is a best-effort offline approximation, not an authoritative
+        // coordinate-to-zone conversion.
+        String resolvedZoneId = CityPickerDialog.findNearestTimeZone(this, lat, lng);
+        ZoneId zone;
+        try {
+            zone = (resolvedZoneId == null) ? null : ZoneId.of(resolvedZoneId);
+        } catch (DateTimeException | NullPointerException e) {
+            zone = null;
+        }
+        if (zone == null) {
+            runOnUiThread(() -> Toast.makeText(MainActivity.this,
+                    "GPS time zone could not be determined offline. " +
+                            "Please choose your city and time zone manually.",
+                    Toast.LENGTH_LONG).show());
+            return;
+        }
+
         prayerZoneId = zone;
         prayerLatitude = lat;
         prayerLongitude = lng;
@@ -561,6 +576,7 @@ private void showAppearanceDialog() {
             prayerLocation.setText(base + " \u00b7 Offline");
         }
 
+        updatePrayerDate();
         updateNextPrayer();
         startRemainingTimeTicker();
     }
@@ -628,6 +644,7 @@ private void showAppearanceDialog() {
         if (ishaTime != null)    ishaTime.setText(cleanTime(currentTimings.Isha));
 
         // Next prayer + remaining time
+        updatePrayerDate();
         updateNextPrayer();
         startRemainingTimeTicker();
     }

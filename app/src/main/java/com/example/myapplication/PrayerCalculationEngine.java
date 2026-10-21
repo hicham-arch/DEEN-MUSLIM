@@ -33,6 +33,7 @@ public final class PrayerCalculationEngine {
         double fajrAngle;
         double ishaAngle;
         double ishaMinutes;
+        double maghribMinutes = 0.0;
         int asrFactor = 1;
         double maghribAngle = 0.833; // standard refraction-adjusted sunrise/sunset altitude
         Params(double f, double i) { fajrAngle = f; ishaAngle = i; }
@@ -50,7 +51,7 @@ public final class PrayerCalculationEngine {
             case 3:  return new Params(18.0, 17.0);                          // Muslim World League
             case 4:  { Params p = new Params(18.5, 0); p.ishaMinutes = 90; return p; } // Umm Al-Qura (Isha: +90 min)
             case 5:  return new Params(19.5, 17.5);                          // Egyptian
-            case 7:  return new Params(17.7, 14.0);                          // Tehran
+            case 7:  { Params p = new Params(17.7, 14.0); p.maghribAngle = 4.5; return p; } // Tehran
             case 8:  { Params p = new Params(19.5, 0); p.ishaMinutes = 90; return p; } // Gulf (Isha: +90 min)
             case 9:  return new Params(18.0, 17.5);                          // Kuwait
             case 10: { Params p = new Params(18.0, 0); p.ishaMinutes = 90; return p; } // Qatar (Isha: +90 min)
@@ -102,7 +103,8 @@ public final class PrayerCalculationEngine {
         double solarNoon = 12.0 + tz - longitude / 15.0 - eqTime / 60.0;
 
         // Hour angles
-        double sunriseHourAngle = hourAngleFromAltitude(latitude, decl, -Math.abs(p.maghribAngle));
+        double sunriseHourAngle = hourAngleFromAltitude(latitude, decl, -0.833);
+        double maghribHourAngle = hourAngleFromAltitude(latitude, decl, -Math.abs(p.maghribAngle));
         double fajrHourAngle = hourAngleFromAltitude(latitude, decl, -Math.abs(p.fajrAngle));
         double ishaHourAngle = (p.ishaMinutes > 0) ? Double.NaN
                 : hourAngleFromAltitude(latitude, decl, -Math.abs(p.ishaAngle));
@@ -140,20 +142,23 @@ public final class PrayerCalculationEngine {
         boolean needsFallback = !Double.isFinite(fajr) || !Double.isFinite(isha);
         if (needsFallback && Double.isFinite(night)) {
             switch (highLatitudeRule) {
+                case HIGH_LATITUDE_NONE:
+                    // No adjustment: leave the affected prayer unavailable.
+                    break;
                 case HIGH_LATITUDE_MIDDLE_OF_NIGHT:
                     if (!Double.isFinite(fajr)) fajr = sunrise - night / 2.0;
                     if (!Double.isFinite(isha)) isha = sunset + night / 2.0;
                     break;
-                case HIGH_LATITUDE_ANGLE_BASED:
-                    // Angle-based adjustment is not implemented beyond the
-                    // one-seventh rule.  Documented limitation: for locations
-                    // where angle-based adjustment is mandated, use an
-                    // implementation that supports it; we deliberately do not
-                    // fabricate values here.
                 case HIGH_LATITUDE_ONE_SEVENTH:
-                default:
                     if (!Double.isFinite(fajr)) fajr = sunrise - night / 7.0;
                     if (!Double.isFinite(isha)) isha = sunset + night / 7.0;
+                    break;
+                case HIGH_LATITUDE_ANGLE_BASED:
+                    // Unsupported in this implementation. We intentionally do
+                    // not present angle-based adjustment as a working option and
+                    // leave the affected prayer unavailable.
+                    break;
+                default:
                     break;
             }
         }
@@ -178,7 +183,8 @@ public final class PrayerCalculationEngine {
         t.Sunrise = format(sunrise);
         t.Dhuhr = format(solarNoon);
         t.Asr = format(asr);
-        t.Maghrib = format(sunset);
+        double maghrib = Double.isFinite(maghribHourAngle) ? solarNoon + maghribHourAngle / 15.0 : sunset;
+        t.Maghrib = format(maghrib);
         t.Isha = format(isha);
         t.Imsak = Double.isFinite(fajr) ? format(fajr - 10.0 / 60.0) : "--:--";
         t.Midnight = (Double.isFinite(sunset) && Double.isFinite(fajr))

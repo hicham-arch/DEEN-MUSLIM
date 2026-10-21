@@ -43,6 +43,41 @@ public final class CityPickerDialog {
 
     private CityPickerDialog() {}
 
+    /**
+     * Best-effort offline time-zone resolution for a GPS position.
+     *
+     * This is intentionally coarse: it uses the nearest city record in the
+     * bundled city database. A GPS fix can be far from that city, so the result
+     * is a practical fallback only. The caller must still tell the user when an
+     * accurate zone could not be determined and allow manual selection.
+     */
+    public static String findNearestTimeZone(Context context, double latitude, double longitude) {
+        SQLiteDatabase db = null;
+        Cursor cursor = null;
+        try {
+            File file = CityDatabaseHelper.copyDatabaseIfNeeded(context);
+            db = SQLiteDatabase.openDatabase(file.getAbsolutePath(), null,
+                    SQLiteDatabase.OPEN_READONLY | SQLiteDatabase.NO_LOCALIZED_COLLATORS);
+            cursor = db.rawQuery(
+                    "SELECT timezone FROM cities ORDER BY " +
+                            "(latitude - ?) * (latitude - ?) + (longitude - ?) * (longitude - ?) " +
+                            "LIMIT 1",
+                    new String[] {
+                            String.valueOf(latitude), String.valueOf(latitude),
+                            String.valueOf(longitude), String.valueOf(longitude)
+                    });
+            if (cursor != null && cursor.moveToFirst()) {
+                return cursor.getString(0);
+            }
+        } catch (Exception e) {
+            return null;
+        } finally {
+            if (cursor != null) cursor.close();
+            if (db != null) db.close();
+        }
+        return null;
+    }
+
     public interface SelectionListener {
         void onCitySelected(City city);
     }
