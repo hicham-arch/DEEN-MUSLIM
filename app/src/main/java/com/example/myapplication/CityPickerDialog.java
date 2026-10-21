@@ -64,31 +64,45 @@ public final class CityPickerDialog {
             db = SQLiteDatabase.openDatabase(file.getAbsolutePath(), null,
                     SQLiteDatabase.OPEN_READONLY | SQLiteDatabase.NO_LOCALIZED_COLLATORS);
             cursor = db.rawQuery(
-                    "SELECT timezone FROM cities ORDER BY " +
-                            "(latitude - ?) * (latitude - ?) + (longitude - ?) * (longitude - ?) " +
-                            "LIMIT 1",
-                    new String[] {
-                            String.valueOf(latitude), String.valueOf(latitude),
-                            String.valueOf(longitude), String.valueOf(longitude)
-                    });
-            if (cursor != null && cursor.moveToFirst()) {
-                String value = cursor.getString(0);
-                if (value != null && !value.trim().isEmpty()) {
-                    try {
-                        java.time.ZoneId.of(value.trim());
-                        return value.trim();
-                    } catch (Exception ignored) {
-                        return null;
-                    }
+                    "SELECT latitude, longitude, timezone FROM cities",
+                    null);
+            double targetLat = Math.toRadians(latitude);
+            double targetLon = Math.toRadians(longitude);
+            double bestDistance = Double.MAX_VALUE;
+            String bestZone = null;
+            while (cursor != null && cursor.moveToNext()) {
+                double cityLat = cursor.getDouble(0);
+                double cityLon = cursor.getDouble(1);
+                String zone = cursor.getString(2);
+                if (zone == null || zone.trim().isEmpty()) {
+                    continue;
+                }
+                String candidate = zone.trim();
+                try {
+                    java.time.ZoneId.of(candidate);
+                } catch (Exception ignored) {
+                    continue;
+                }
+                double cityLatRad = Math.toRadians(cityLat);
+                double cityLonRad = Math.toRadians(cityLon);
+                double deltaLat = targetLat - cityLatRad;
+                double deltaLon = targetLon - cityLonRad;
+                double a = Math.sin(deltaLat / 2.0) * Math.sin(deltaLat / 2.0)
+                        + Math.cos(cityLatRad) * Math.cos(targetLat)
+                        * Math.sin(deltaLon / 2.0) * Math.sin(deltaLon / 2.0);
+                double centralAngle = 2.0 * Math.atan2(Math.sqrt(a), Math.sqrt(1.0 - a));
+                if (centralAngle < bestDistance) {
+                    bestDistance = centralAngle;
+                    bestZone = candidate;
                 }
             }
+            return bestZone;
         } catch (Exception e) {
             return null;
         } finally {
             if (cursor != null) cursor.close();
             if (db != null) db.close();
         }
-        return null;
     }
 
     /**

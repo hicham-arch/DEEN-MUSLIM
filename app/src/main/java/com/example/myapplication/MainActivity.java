@@ -52,6 +52,8 @@ public class MainActivity extends AppCompatActivity {
     private double prayerLongitude = Double.NaN;
     private LocalDate prayerDate = LocalDate.now(ZoneId.systemDefault());
     private int timeZoneRequestVersion = 0;
+    private int uiRequestVersion = 0;
+    private Runnable pendingGpsFallback;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -227,6 +229,8 @@ private void showLocationDialog() {
             .setMessage(current)
             .setItems(options, (dialog, which) -> {
                 if (which == 0) {
+                    uiRequestVersion++;
+                    timeZoneRequestVersion++;
                     prefs.setUseGps(true);
                     Toast.makeText(this, "Switching to GPS…", Toast.LENGTH_SHORT).show();
                     requestLocationAndFetch();
@@ -240,6 +244,10 @@ private void showLocationDialog() {
 
 private void showCityInputDialog() {
     CityPickerDialog.show(this, prefs.getCity(), selected -> {
+
+        // A manual selection cancels any pending GPS/time-zone work.
+        uiRequestVersion++;
+        timeZoneRequestVersion++;
 
         prefs.setCity(selected.name);
         prefs.setCountry(selected.countryName);
@@ -383,11 +391,17 @@ private void showAppearanceDialog() {
     }
 
     private void loadPrayerTimes() {
+        uiRequestVersion++;
+        timeZoneRequestVersion++;
         if (prefs.isUseGps()) {
             requestLocationAndFetch();
         } else {
-            fetchByCity();
+            fetchByCity(uiRequestVersion);
         }
+    }
+
+    private void fetchByCity() {
+        fetchByCity(uiRequestVersion);
     }
 
     private void requestLocationAndFetch() {
@@ -427,17 +441,29 @@ private void showAppearanceDialog() {
                 lm.requestSingleUpdate(LocationManager.NETWORK_PROVIDER, new LocationListener() {
                     @Override
                     public void onLocationChanged(@NonNull Location location) {
+                        if (pendingGpsFallback != null) {
+                            handler.removeCallbacks(pendingGpsFallback);
+                            pendingGpsFallback = null;
+                        }
                         prefs.saveLastLocation(location.getLatitude(), location.getLongitude());
                         fetchByLocation(location.getLatitude(), location.getLongitude());
                     }
                     @Override public void onProviderEnabled(@NonNull String provider) {}
                     @Override public void onProviderDisabled(@NonNull String provider) {
+                        if (pendingGpsFallback != null) {
+                            handler.removeCallbacks(pendingGpsFallback);
+                            pendingGpsFallback = null;
+                        }
                         fetchByCity();
                     }
                 }, Looper.getMainLooper());
 
                 // Fallback after 8 seconds
-                handler.postDelayed(this::fetchByCity, 8000);
+                pendingGpsFallback = () -> {
+                    pendingGpsFallback = null;
+                    fetchByCity();
+                };
+                handler.postDelayed(pendingGpsFallback, 8000);
             }
         } catch (SecurityException e) {
             fetchByCity();
@@ -485,7 +511,7 @@ private void showAppearanceDialog() {
                 public void onSuccess(PrayerResponse response) {
                     runOnUiThread(() -> {
                         if (requestVersion != timeZoneRequestVersion) return;
-                        updateUI(response);
+                        updateUI(response, requestVersion);
                     });
                 }
 
@@ -501,7 +527,12 @@ private void showAppearanceDialog() {
         });
     }
 
-    private void fetchByCity() {
+    private void fetchByCity(final int requestVersion) {
+        // Drop stale callers.
+        if (requestVersion != uiRequestVersion) {
+            return;
+        }
+
         String city = prefs.getCity();
         String country = prefs.getCountry();
 
@@ -510,8 +541,11 @@ private void showAppearanceDialog() {
         try {
             zone = ZoneId.of(prefs.getTimeZone());
         } catch (DateTimeException | NullPointerException e) {
-            runOnUiThread(() -> Toast.makeText(MainActivity.this,
-                    "Invalid saved time zone; please re-select your city.", Toast.LENGTH_LONG).show());
+            runOnUiThread(() -> {
+                if (requestVersion != uiRequestVersion) return;
+                Toast.makeText(MainActivity.this,
+                        "Invalid saved time zone; please re-select your city.", Toast.LENGTH_LONG).show();
+            });
             return;
         }
         prayerZoneId = zone;
@@ -524,15 +558,21 @@ private void showAppearanceDialog() {
         PrayerTimesApi.getTimingsByCity(city, country, method, date, new PrayerTimesApi.Callback() {
             @Override
             public void onSuccess(PrayerResponse response) {
-                runOnUiThread(() -> updateUI(response));
+                runOnUiThread(() -> {
+                    if (requestVersion != uiRequestVersion) return;
+                    updateUI(response, requestVersion);
+                });
             }
             @Override
             public void onError(String message) {
-                runOnUiThread(() -> calculatePrayerTimesOffline(
-                        prefs.getLastLat(),
-                        prefs.getLastLng(),
-                        prefs.getTimeZone()
-                ));
+                runOnUiThread(() -> {
+                    if (requestVersion != uiRequestVersion) return;
+                    calculatePrayerTimesOffline(
+                            prefs.getLastLat(),
+                            prefs.getLastLng(),
+                            prefs.getTimeZone()
+                    );
+                });
             }
         });
     }
@@ -628,7 +668,8 @@ private void showAppearanceDialog() {
     return true;
 }
 
-    private void updateUI(PrayerResponse response) {
+    private void updateUI(PrayerResponse response, int requestVersion) {
+        if (requestVersion != uiRequestVersion) return;
         if (response == null || response.data == null || response.data.timings == null) return;
 
         currentTimings = response.data.timings;
@@ -880,6 +921,8 @@ private void highlightNextPrayerCard(int nextIndex,
     protected void onDestroy() {
         super.onDestroy();
         if (remainingTimeUpdater != null) handler.removeCallbacks(remainingTimeUpdater);
+        if (pendingGpsFallback != null) handler.removeCallbacks(pendingGpsFallback);
+        pendingGpsFallback = null;
     }
 
     // ---------- Theme (already in your code) ----------
