@@ -107,13 +107,26 @@ private void showSettingsDialog() {
         title.setText(data[1]);
         title.setTextSize(16);
         title.setTypeface(null, android.graphics.Typeface.BOLD);
-        title.setTextColor(getResources().getColor(android.R.color.white));
+        android.util.TypedValue titleColor = new android.util.TypedValue();
+        getTheme().resolveAttribute(
+            com.google.android.material.R.attr.colorOnSurface,
+            titleColor,
+            true
+        );
+        title.setTextColor(titleColor.data);
         textCol.addView(title);
 
         android.widget.TextView subtitle = new android.widget.TextView(this);
         subtitle.setText(data[2]);
         subtitle.setTextSize(13);
-        subtitle.setTextColor(0xFFAAAAAA);
+        //subtitle.setTextColor(0xFFAAAAAA);
+        android.util.TypedValue subtitleColor = new android.util.TypedValue();
+        getTheme().resolveAttribute(
+          com.google.android.material.R.attr.colorOnSurfaceVariant,
+          subtitleColor,
+          true
+        );
+        subtitle.setTextColor(subtitleColor.data);
         textCol.addView(subtitle);
 
         row.addView(textCol);

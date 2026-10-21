@@ -1,72 +1,145 @@
 package com.example.myapplication;
 
-import android.util.Log;
+import android.net.Uri;
+
 import com.google.gson.Gson;
-import okhttp3.OkHttpClient;
-import okhttp3.Request;
-import okhttp3.Response;
+
 import java.io.IOException;
 import java.util.concurrent.TimeUnit;
 
-public class PrayerTimesApi {
+import okhttp3.Call;
+import okhttp3.Callback;
+import okhttp3.OkHttpClient;
+import okhttp3.Request;
+import okhttp3.Response;
+import okhttp3.ResponseBody;
+
+public final class PrayerTimesApi {
 
     private static final String BASE_URL = "https://api.aladhan.com/v1";
-    private static final OkHttpClient client = new OkHttpClient.Builder()
+    private static final OkHttpClient CLIENT = new OkHttpClient.Builder()
             .connectTimeout(15, TimeUnit.SECONDS)
             .readTimeout(15, TimeUnit.SECONDS)
+            .callTimeout(25, TimeUnit.SECONDS)
             .build();
-    private static final Gson gson = new Gson();
+    private static final Gson GSON = new Gson();
+
+    private PrayerTimesApi() {
+        // Utility class.
+    }
 
     public interface Callback {
         void onSuccess(PrayerResponse response);
         void onError(String message);
     }
 
-    /** By GPS coordinates */
-    public static void getTimingsByLocation(double lat, double lng, int method, String date, Callback callback) {
-        String url = BASE_URL + "/timings/" + date
-                + "?latitude=" + lat
-                + "&longitude=" + lng
-                + "&method=" + method;
+    /** Fetch timings for GPS coordinates. */
+    public static void getTimingsByLocation(
+            double latitude,
+            double longitude,
+            int method,
+            String date,
+            Callback callback) {
+
+        if (!Double.isFinite(latitude) || latitude < -90 || latitude > 90
+                || !Double.isFinite(longitude) || longitude < -180 || longitude > 180) {
+            callback.onError("Invalid location coordinates.");
+            return;
+        }
+
+        String url = Uri.parse(BASE_URL + "/timings/" + Uri.encode(date))
+                .buildUpon()
+                .appendQueryParameter("latitude", String.valueOf(latitude))
+                .appendQueryParameter("longitude", String.valueOf(longitude))
+                .appendQueryParameter("method", String.valueOf(method))
+                .build()
+                .toString();
 
         execute(url, callback);
     }
 
-    /** By city name */
-    public static void getTimingsByCity(String city, String country, int method, String date, Callback callback) {
-        String url = BASE_URL + "/timingsByCity/" + date
-                + "?city=" + city.replace(" ", "%20")
-                + "&country=" + country.replace(" ", "%20")
-                + "&method=" + method;
+    /** Fetch timings for a manually entered city and country. */
+    public static void getTimingsByCity(
+            String city,
+            String country,
+            int method,
+            String date,
+            Callback callback) {
+
+        if (city == null || city.trim().isEmpty()
+                || country == null || country.trim().isEmpty()) {
+            callback.onError("Enter both a city and country.");
+            return;
+        }
+
+        String url = Uri.parse(BASE_URL + "/timingsByCity/" + Uri.encode(date))
+                .buildUpon()
+                .appendQueryParameter("city", city.trim())
+                .appendQueryParameter("country", country.trim())
+                .appendQueryParameter("method", String.valueOf(method))
+                .build()
+                .toString();
 
         execute(url, callback);
     }
 
     private static void execute(String url, Callback callback) {
-        Request request = new Request.Builder().url(url).build();
+        Request request = new Request.Builder()
+                .url(url)
+                .header("Accept", "application/json")
+                .get()
+                .build();
 
-        client.newCall(request).enqueue(new okhttp3.Callback() {
+        CLIENT.newCall(request).enqueue(new okhttp3.Callback() {
             @Override
-            public void onFailure(okhttp3.Call call, IOException e) {
-                callback.onError(e.getMessage());
+            public void onFailure(Call call, IOException e) {
+                if (!call.isCanceled()) {
+                    callback.onError("Could not load prayer times. Check your internet connection.");
+                }
             }
 
             @Override
-            public void onResponse(okhttp3.Call call, Response response) throws IOException {
-                if (!response.isSuccessful()) {
-                    callback.onError("HTTP " + response.code());
-                    return;
-                }
-                String body = response.body().string();
-                try {
-                    PrayerResponse prayerResponse = gson.fromJson(body, PrayerResponse.class);
-                    if (prayerResponse.code == 200) {
-                        callback.onSuccess(prayerResponse);
-                    } else {
-                        callback.onError(prayerResponse.status);
+            public void onResponse(Call call, Response response) {
+                try (Response closeableResponse = response) {
+                    if (!closeableResponse.isSuccessful()) {
+                        callback.onError("Prayer service returned HTTP "
+                                + closeableResponse.code() + ".");
+                        return;
                     }
-                } catch (Exception e) {
-                    callback.onError("Parse error: " + e.getMessage());
+
+                    ResponseBody body = closeableResponse.body();
+                    if (body == null) {
+                        callback.onError("Prayer service returned an empty response.");
+                        return;
+                    }
+
+                    String json = body.string();
+                    if (json.trim().isEmpty()) {
+                        callback.onError("Prayer service returned an empty response.");
+                        return;
+                    }
+
+                    PrayerResponse parsed;
+                    try {
+                        parsed = GSON.fromJson(json, PrayerResponse.class);
+                    } catch (Exception parseError) {
+                        callback.onError("Could not read the prayer-times response.");
+                        return;
+                    }
+
+                    if (parsed == null) {
+                        callback.onError("Prayer service returned invalid data.");
+                    } else if (parsed.code == 200 && parsed.data != null
+                            && parsed.data.timings != null) {
+                        callback.onSuccess(parsed);
+                    } else {
+                        String message = parsed.status;
+                        callback.onError(message == null || message.trim().isEmpty()
+                                ? "Prayer times are unavailable for this location."
+                                : message);
+                    }
+                } catch (IOException e) {
+                    callback.onError("Could not read prayer times. Please try again.");
                 }
             }
         });

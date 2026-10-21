@@ -21,6 +21,7 @@
     <color name="fajar_bg">#30291D</color>
     <color name="dhuhr_bg">#202B39</color>
     <color name="asr_bg">#35291D</color>
+    <color name="maghrib_bg">#35293D</color>
     <color name="isha_bg">#2D293A</color>
     <color name="purple">#B388FF</color>
 </resources>
